@@ -25,7 +25,7 @@ DIPSoftware::DIPSoftware(QWidget *parent) : QMainWindow(parent) {
 	centerWidget = new QWidget(this);
 	undoStack = new QUndoStack(this);
 
-	openFileAction = new QAction(QStringLiteral("打开..."), this);
+	openFileAction = new QAction(QStringLiteral("&打开..."), this);
 	openFileAction->setShortcut(QKeySequence::Open);
 	saveFileAction = new QAction(QStringLiteral("&保存..."), this);
 	saveFileAction->setShortcut(QKeySequence::Save);
@@ -153,8 +153,7 @@ void DIPSoftware::rotateImageAnyAngle() {
 	bool ok;
 	float theta = QInputDialog::getDouble(this, QStringLiteral("旋转图像"), QStringLiteral("旋转角度（顺时针）"), 0.0, -180.0, 180.0, 2, &ok);
 	if (ok) {
-		Mat rotatedImg = Utils::rotateImageMat(*(imgWidget->imgMat), theta * PI / 180);
-		undoStack->push(new EditImageCommand(imgWidget, *imgWidget->imgMat, rotatedImg));
+		rotateImage(theta * PI / 180);
 	}
 }
 

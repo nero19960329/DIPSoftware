@@ -68,8 +68,8 @@ void InputPreviewDialog::ensureSlider() {
 void InputPreviewDialog::ensureSpinBox() {
 	if (!spinBox) {
 		spinBox = new QSpinBox(this);
-		QObject::connect(slider, static_cast<void (QSlider::*)(int)>(&QSlider::valueChanged), spinBox, [this](int d){ spinBox->setValue(d); });
-		QObject::connect(spinBox, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), slider, [this](int d){ slider->setValue(d); });
+		QObject::connect(slider, static_cast<void (QSlider::*)(int)>(&QSlider::valueChanged), spinBox, bind(&QSpinBox::setValue, spinBox, placeholders::_1));
+		QObject::connect(spinBox, static_cast<void (QSpinBox::*)(int)>(&QSpinBox::valueChanged), slider, bind(&QSlider::setValue, slider, placeholders::_1));
 	}
 }
 
