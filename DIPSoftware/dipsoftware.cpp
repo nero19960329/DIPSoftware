@@ -20,13 +20,12 @@ DIPSoftware::DIPSoftware(QWidget *parent) : QMainWindow(parent) {
 	showMaximized();
 
 	imgWidget = new ImgWidget(this);
-	originMat = NULL;
+	originMat = nullptr;
 	mainLayout = new QHBoxLayout;
 	centerWidget = new QWidget(this);
-	actionObservers = new list<QAction*>();
 	undoStack = new QUndoStack(this);
 
-	openFileAction = new QAction(QStringLiteral("&打开..."), this);
+	openFileAction = new QAction(QStringLiteral("打开..."), this);
 	openFileAction->setShortcut(QKeySequence::Open);
 	saveFileAction = new QAction(QStringLiteral("&保存..."), this);
 	saveFileAction->setShortcut(QKeySequence::Save);
@@ -39,6 +38,7 @@ DIPSoftware::DIPSoftware(QWidget *parent) : QMainWindow(parent) {
 	redoAction->setShortcut(QKeySequence::Redo);
 
 	cropAction = new QAction(QStringLiteral("&裁剪..."), this);
+	cropAction->setEnabled(false);
 	rotate90Action = new QAction(QStringLiteral("&顺时针旋转90度"), this);
 	rotate180Action = new QAction(QStringLiteral("&旋转180度"), this);
 	rotate270Action = new QAction(QStringLiteral("&逆时针旋转90度"), this);
@@ -49,18 +49,12 @@ DIPSoftware::DIPSoftware(QWidget *parent) : QMainWindow(parent) {
 	changeSaturationAction = new QAction(QStringLiteral("&饱和度..."), this);
 	changeHueAction = new QAction(QStringLiteral("&色相..."), this);
 
-	actionObservers->push_back(saveFileAction);
-	actionObservers->push_back(saveAsFileAction);
-	actionObservers->push_back(cropAction);
-	actionObservers->push_back(rotate90Action);
-	actionObservers->push_back(rotate180Action);
-	actionObservers->push_back(rotate270Action);
-	actionObservers->push_back(rotateAction);
-	actionObservers->push_back(horizontalFlipAction);
-	actionObservers->push_back(verticalFlipAction);
-	actionObservers->push_back(changeLightnessAction);
-	actionObservers->push_back(changeSaturationAction);
-	actionObservers->push_back(changeHueAction);
+	actionObservers = make_shared<vector<QAction*>>(initializer_list<QAction*>{
+		saveFileAction, saveAsFileAction, rotate90Action,
+		rotate180Action, rotate270Action, rotateAction,
+		horizontalFlipAction, verticalFlipAction, changeLightnessAction,
+		changeSaturationAction, changeHueAction
+	});
 
 	QMenu *fileMenu = menuBar()->addMenu(QStringLiteral("&文件"));
 	fileMenu->addAction(openFileAction);
@@ -85,14 +79,15 @@ DIPSoftware::DIPSoftware(QWidget *parent) : QMainWindow(parent) {
 	changeMenu->addAction(changeSaturationAction);
 	changeMenu->addAction(changeHueAction);
 
+	connect(imgWidget, &ImgWidget::setCropActionEnabled, this, bind(&QAction::setEnabled, cropAction, placeholders::_1));
 	connect(openFileAction, &QAction::triggered, this, &DIPSoftware::openFile);
 	connect(saveFileAction, &QAction::triggered, this, &DIPSoftware::saveFile);
 	connect(saveAsFileAction, &QAction::triggered, this, &DIPSoftware::saveAsFile);
 	connect(cropAction, &QAction::triggered, this, &DIPSoftware::cropImage);
-	connect(rotate90Action, &QAction::triggered, this, [this]{ undoStack->push(new EditImageCommand(imgWidget, *imgWidget->imgMat, Utils::rotateImageMat(*(imgWidget->imgMat), PI / 2))); });
-	connect(rotate180Action, &QAction::triggered, this, [this]{ undoStack->push(new EditImageCommand(imgWidget, *imgWidget->imgMat, Utils::rotateImageMat(*(imgWidget->imgMat), PI))); });
-	connect(rotate270Action, &QAction::triggered, this, [this]{ undoStack->push(new EditImageCommand(imgWidget, *imgWidget->imgMat, Utils::rotateImageMat(*(imgWidget->imgMat), PI * 3 / 2))); });
-	connect(rotateAction, &QAction::triggered, this, &DIPSoftware::rotateImage);
+	connect(rotate90Action, &QAction::triggered, this, bind(&DIPSoftware::rotateImage, this, PI / 2));
+	connect(rotate180Action, &QAction::triggered, this, bind(&DIPSoftware::rotateImage, this, PI));
+	connect(rotate270Action, &QAction::triggered, this, bind(&DIPSoftware::rotateImage, this, PI * 3 / 2));
+	connect(rotateAction, &QAction::triggered, this, &DIPSoftware::rotateImageAnyAngle);
 	connect(horizontalFlipAction, &QAction::triggered, this, &DIPSoftware::horizontalFlipImage);
 	connect(verticalFlipAction, &QAction::triggered, this, &DIPSoftware::verticalFlipImage);
 	connect(changeLightnessAction, &QAction::triggered, this, [this](){
@@ -101,7 +96,7 @@ DIPSoftware::DIPSoftware(QWidget *parent) : QMainWindow(parent) {
 	});
 	connect(changeSaturationAction, &QAction::triggered, this, [this](){
 		function<Mat(int)> lambdaFunc = [this](int d){ return Utils::changeImageMatSaturation(*originMat, d * 1.0f / 100); };
-		changeImage(lambdaFunc, [this](function<Mat(int)> lambdaFunc, bool& ok){ return InputPreviewDialog::changeInt(this, imgWidget, lambdaFunc, QStringLiteral("饱和度"), QStringLiteral("饱和度："), 0, -150, 150, &ok); });
+		changeImage(lambdaFunc, [this](function<Mat(int)> lambdaFunc, bool& ok){ return InputPreviewDialog::changeInt(this, imgWidget, lambdaFunc, QStringLiteral("饱和度"), QStringLiteral("饱和度："), 0, -100, 100, &ok); });
 	});
 	connect(changeHueAction, &QAction::triggered, this, [this](){
 		function<Mat(int)> lambdaFunc = [this](int d){ return Utils::changeImageMatHue(*originMat, d); };
@@ -119,10 +114,7 @@ DIPSoftware::~DIPSoftware() {
 }
 
 void DIPSoftware::setOriginMat() {
-	if (originMat) {
-		delete originMat;
-	}
-	originMat = new Mat(*imgWidget->imgMat);
+	originMat = imgWidget->imgMat;
 }
 
 void DIPSoftware::openFile() {
@@ -132,18 +124,18 @@ void DIPSoftware::openFile() {
 	}
 	currentFileName = String((const char *) inputFileName.toLocal8Bit());
 	Mat imageMat = imread(currentFileName);
-	imgWidget->setImageMat(imageMat);
+	imgWidget->setImageMat(Utils::mat8U2Mat32F(imageMat));
 	setActionsEnabled(true);
 }
 
 void DIPSoftware::saveFile() {
-	imwrite(currentFileName, *(imgWidget->imgMat));
+	imwrite(currentFileName, Utils::mat32F2Mat8U(*(imgWidget->imgMat)));
 }
 
 void DIPSoftware::saveAsFile() {
 	QString inputFileName = QFileDialog::getSaveFileName(this, QStringLiteral("另存为"), "", QStringLiteral("位图文件(*.bmp);;PNG文件(*.png);;JPEG文件(*.jpg;*.jpeg)"));
 	currentFileName = String((const char *) inputFileName.toLocal8Bit());
-	imwrite(currentFileName, *(imgWidget->imgMat));
+	imwrite(currentFileName, Utils::mat32F2Mat8U(*(imgWidget->imgMat)));
 }
 
 void DIPSoftware::cropImage() {
@@ -153,7 +145,11 @@ void DIPSoftware::cropImage() {
 	imgWidget->removeLastItem();
 }
 
-void DIPSoftware::rotateImage() {
+void DIPSoftware::rotateImage(float theta) {
+	undoStack->push(new EditImageCommand(imgWidget, *imgWidget->imgMat, Utils::rotateImageMat(*(imgWidget->imgMat), theta)));
+}
+
+void DIPSoftware::rotateImageAnyAngle() {
 	bool ok;
 	float theta = QInputDialog::getDouble(this, QStringLiteral("旋转图像"), QStringLiteral("旋转角度（顺时针）"), 0.0, -180.0, 180.0, 2, &ok);
 	if (ok) {
@@ -163,22 +159,18 @@ void DIPSoftware::rotateImage() {
 }
 
 void DIPSoftware::horizontalFlipImage() {
-	Mat image = Mat(imgWidget->imgMat->rows, imgWidget->imgMat->cols, CV_8UC3);
-	for (int i = 0; i < image.rows; ++i) {
-		for (int j = 0; j < image.cols; ++j) {
-			image.at<Vec3b>(i, j) = imgWidget->imgMat->at<Vec3b>(i, image.cols - j - 1);
-		}
+	Mat image = Mat(imgWidget->imgMat->rows, imgWidget->imgMat->cols, CV_32FC3);
+	rep(j, image.cols) {
+		imgWidget->imgMat->col(image.cols - j - 1).copyTo(image.col(j));
 	}
 
 	undoStack->push(new EditImageCommand(imgWidget, *imgWidget->imgMat, image));
 }
 
 void DIPSoftware::verticalFlipImage() {
-	Mat image = Mat(imgWidget->imgMat->rows, imgWidget->imgMat->cols, CV_8UC3);
-	for (int i = 0; i < image.rows; ++i) {
-		for (int j = 0; j < image.cols; ++j) {
-			image.at<Vec3b>(i, j) = imgWidget->imgMat->at<Vec3b>(image.rows - i - 1, j);
-		}
+	Mat image = Mat(imgWidget->imgMat->rows, imgWidget->imgMat->cols, CV_32FC3);
+	rep(i, image.rows) {
+		imgWidget->imgMat->row(image.rows - i - 1).copyTo(image.row(i));
 	}
 
 	undoStack->push(new EditImageCommand(imgWidget, *imgWidget->imgMat, image));
@@ -199,7 +191,7 @@ void DIPSoftware::changeImage(function<Mat(int)> lambdaFunc, function<int(functi
 }
 
 void DIPSoftware::setActionsEnabled(bool enabled) {
-	for (auto action : *actionObservers) {
+	for (const auto& action : *actionObservers) {
 		action->setEnabled(enabled);
 	}
 }

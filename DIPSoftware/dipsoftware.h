@@ -13,7 +13,8 @@
 #include <QUndoStack>
 
 #include <functional>
-#include <list>
+#include <memory>
+#include <vector>
 
 class DIPSoftware : public QMainWindow {
 	Q_OBJECT
@@ -29,7 +30,8 @@ private:
 	void saveFile();
 	void saveAsFile();
 	void cropImage();
-	void rotateImage();
+	void rotateImage(float theta);
+	void rotateImageAnyAngle();
 	void horizontalFlipImage();
 	void verticalFlipImage();
 	void changeImage(std::function<cv::Mat(int)> lambdaFunc, std::function<int(std::function<cv::Mat(int)>, bool&)> changeFunc);
@@ -60,14 +62,15 @@ private:
 	QAction *changeSaturationAction;
 	QAction *changeHueAction;
 
-	std::list<QAction*> *actionObservers;
+	std::shared_ptr<std::vector<QAction*>> actionObservers;
 
 	QUndoStack *undoStack;
 
 	QHBoxLayout *mainLayout;
 	QWidget *centerWidget;
+
 	ImgWidget *imgWidget;
-	cv::Mat *originMat;
+	std::shared_ptr<cv::Mat> originMat;
 };
 
 #endif // DIPSOFTWARE_H

@@ -15,6 +15,8 @@
 
 #include <opencv2/opencv.hpp>
 
+#include <memory>
+
 class EditPixmapItem : public QObject, public QGraphicsPixmapItem {
 	Q_OBJECT
 
@@ -45,9 +47,12 @@ public:
 	ImgWidget(QWidget *parent);
 	~ImgWidget();
 
-	void setImageMat(cv::Mat &);
+	void setImageMat(const cv::Mat &mat);
 	QRect getCropRect();
 	void removeLastItem();
+
+signals:
+	void setCropActionEnabled(bool);
 
 private:
 	void contextMenuEvent(QContextMenuEvent *event);
@@ -68,7 +73,7 @@ private:
 	QAction *cancelCropRectAction;
 
 public:
-	cv::Mat *imgMat;
+	std::shared_ptr<cv::Mat> imgMat;
 };
 
 #endif

@@ -7,6 +7,7 @@
 #include <QPixmap>
 
 using namespace cv;
+using namespace std;
 
 EditPixmapItem::EditPixmapItem(const QPixmap& pixmap) : QGraphicsPixmapItem(pixmap), isDrag(false) {
 	setCursor(Qt::CrossCursor);
@@ -60,10 +61,10 @@ ImgWidget::ImgWidget(QWidget *parent) : QWidget(parent) {
 
 	scene = new QGraphicsScene(this);
 	view = new QGraphicsView(scene);
-	pixmap = NULL;
-	pixmapItem = NULL;
-	rectItem = NULL;
-	imgMat = NULL;
+	pixmap = nullptr;
+	pixmapItem = nullptr;
+	rectItem = nullptr;
+	imgMat = nullptr;
 	mainLayout = new QHBoxLayout;
 
 	popMenu = new QMenu;
@@ -81,12 +82,8 @@ ImgWidget::~ImgWidget() {
 
 }
 
-void ImgWidget::setImageMat(Mat& mat) {
-	if (imgMat) {
-		delete imgMat;
-	}
-	imgMat = new Mat();
-	*imgMat = mat;
+void ImgWidget::setImageMat(const Mat& mat) {
+	imgMat = make_shared<Mat>(mat);
 
 	if (pixmap) {
 		delete pixmap;
@@ -111,8 +108,9 @@ void ImgWidget::removeLastItem() {
 	if (rectItem) {
 		scene->removeItem(rectItem);
 		delete rectItem;
-		rectItem = NULL;
+		rectItem = nullptr;
 		view->viewport()->update();
+		emit(setCropActionEnabled(false));
 	}
 }
 
@@ -133,4 +131,5 @@ void ImgWidget::updateRectItem() {
 	rectItem->setPen(QPen(Qt::DashLine));
 	scene->addItem(rectItem);
 	view->viewport()->update();
+	emit(setCropActionEnabled(true));
 }
