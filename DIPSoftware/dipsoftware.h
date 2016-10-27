@@ -4,7 +4,9 @@
 #include <QtWidgets/QMainWindow>
 #include "ui_dipsoftware.h"
 
+#include "HistogramWidget.h"
 #include "ImgWidget.h"
+#include "InputPreviewDialog.h"
 #include "Utils.h"
 
 #include <QAction>
@@ -34,7 +36,9 @@ private:
 	void rotateImageAnyAngle();
 	void horizontalFlipImage();
 	void verticalFlipImage();
-	void changeImage(std::function<cv::Mat(int)> lambdaFunc, std::function<int(std::function<cv::Mat(int)>, bool&)> changeFunc);
+	void changeImage(std::function<cv::Mat(std::vector<float>)> lambdaFunc, std::function<std::vector<float>(std::function<cv::Mat(std::vector<float>)>, bool&)> changeFunc);
+	void uiChangeImage(Utils::changeFuncType changeFunc, const QString &title, const std::vector<ParameterInfo> &infos);
+	void histEquImage();
 
 	void setActionsEnabled(bool enabled);
 
@@ -62,6 +66,12 @@ private:
 	QAction *changeSaturationAction;
 	QAction *changeHueAction;
 
+	QAction *changeGammaAction;
+	QAction *changeLogAction;
+	QAction *changePowAction;
+
+	QAction *histEquAction;
+
 	std::shared_ptr<std::vector<QAction*>> actionObservers;
 
 	QUndoStack *undoStack;
@@ -69,6 +79,7 @@ private:
 	QHBoxLayout *mainLayout;
 	QWidget *centerWidget;
 
+	HistogramWidget *histogramWidget;
 	ImgWidget *imgWidget;
 	std::shared_ptr<cv::Mat> originMat;
 };

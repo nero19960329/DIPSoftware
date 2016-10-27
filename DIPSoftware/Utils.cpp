@@ -18,6 +18,34 @@ QString Utils::getExtension(const String& str) {
 	return res;
 }
 
+void Utils::getSequence(const Vec3f &vec, float &max, float &mid, float &min) {
+	if (vec[0] >= vec[1] && vec[0] >= vec[2]) {
+		max = vec[0];
+		mid = vec[1];
+		min = vec[2];
+	} else if (vec[0] >= vec[2] && vec[2] >= vec[1]) {
+		max = vec[0];
+		mid = vec[2];
+		min = vec[1];
+	} else if (vec[1] >= vec[0] && vec[0] >= vec[2]) {
+		max = vec[1];
+		mid = vec[0];
+		min = vec[2];
+	} else if (vec[1] >= vec[2] && vec[2] >= vec[0]) {
+		max = vec[1];
+		mid = vec[2];
+		min = vec[0];
+	} else if (vec[2] >= vec[0] && vec[0] >= vec[1]) {
+		max = vec[2];
+		mid = vec[0];
+		min = vec[1];
+	} else {
+		max = vec[2];
+		mid = vec[1];
+		min = vec[0];
+	}
+}
+
 Mat Utils::mat8U2Mat32F(const Mat& mat8U) {
 	Mat mat32F(mat8U.rows, mat8U.cols, CV_32FC3);
 	mat8U.convertTo(mat32F, CV_32FC3, 1.0f / 255);
@@ -193,16 +221,16 @@ Mat Utils::rotateImageMat(const Mat& mat, float theta) {
 	return res;
 }
 
-Mat Utils::changeImageMatLightness(const Mat& mat, float delta) {
+Mat Utils::changeImageMat(const Mat& mat, vector<float> deltas, changeFuncType changeFunc) {
 	Mat res(mat.rows, mat.cols, CV_32FC3);
 
 	int x[5] = { 0, mat.rows / 4, mat.rows / 2, mat.rows * 3 / 4, mat.rows };
 	int y[3] = { 0, mat.cols / 2, mat.cols };
 	future<void> getPartialResult[8];
 	rep(i, 4) rep(j, 2) {
-		getPartialResult[i + i + j] = async(&Utils::changePartialImageMatLightness, mat, res, exp(-delta), x[i], x[i + 1], y[j], y[j + 1]);
+		getPartialResult[i + i + j] = async(changeFunc, mat, res, deltas, x[i], x[i + 1], y[j], y[j + 1]);
 	}
-	
+
 	rep(i, 8) {
 		getPartialResult[i].get();
 	}
@@ -210,7 +238,94 @@ Mat Utils::changeImageMatLightness(const Mat& mat, float delta) {
 	return res;
 }
 
-void Utils::changePartialImageMatLightness(const Mat& mat, Mat& res, float delta, int x0, int x1, int y0, int y1) {
+array<int, 256> Utils::getHistogram(const Mat& mat) {
+	array<int, 256> res;
+	fill(res.begin(), res.end(), 0);
+	rep(i, mat.rows) rep(j, mat.cols) {
+		Vec3f rgb = mat.at<Vec3f>(i, j);
+		unsigned int grey = (rgb[0] + rgb[1] + rgb[2]) * 85.0 + 0.5;
+		res[grey]++;
+	}
+	return res;
+}
+
+Mat Utils::histogramEqualization(const Mat& mat) {
+	auto convert = [=](float d){ return (int) (d * 255.0 + 0.5); };
+
+	array<int, 256> hist;
+	fill(hist.begin(), hist.end(), 0);
+	rep(i, mat.rows) rep(j, mat.cols) {
+		Vec3f rgb = mat.at<Vec3f>(i, j);
+		hist[convert(rgb[0])]++;
+		hist[convert(rgb[1])]++;
+		hist[convert(rgb[2])]++;
+	}
+
+	array<float, 256> s;
+	int pixels = mat.rows * mat.cols * 3;
+	s[0] = hist[0] * 1.0 / pixels;
+	repa(i, 1, 256) {
+		s[i] = s[i - 1] + hist[i] * 1.0 / pixels;
+	}
+
+	Mat res(mat.rows, mat.cols, CV_32FC3);
+	rep(i, mat.rows) rep(j, mat.cols) {
+		Vec3f rgb = mat.at<Vec3f>(i, j);
+		res.at<Vec3f>(i, j) = Vec3f(s[convert(rgb[0])], s[convert(rgb[1])], s[convert(rgb[2])]);
+	}
+
+	return res;
+}
+
+Mat Utils::histogramSpecificationSML(const Mat& orig, const Mat& pattern) {
+	array<int, 256> origHist, patternHist;
+	origHist = getHistogram(orig);
+	patternHist = getHistogram(pattern);
+
+	array<float, 256> origCDF, patternCDF;
+	int origPixels = orig.rows * orig.cols;
+	int patternPixels = pattern.rows * pattern.cols;
+	origCDF[0] = origHist[0] * 1.0 / origPixels;
+	patternCDF[0] = patternHist[0] * 1.0 / patternPixels;
+	rep(i, 1, 256) {
+		origCDF[i] = origCDF[i - 1] + origHist[i] * 1.0 / origPixels;
+		patternCDF[i] = patternCDF[i - 1] + patternHist[i] * 1.0 / patternPixels;
+	}
+
+	array<float, 256> map;
+	bool status = false;
+	int tmpMin, tmpMax;
+	tmpMin = 0;
+	tmpMax = 0;
+	rep(i, 256) {
+		if (origCDF[i] < patternCDF[tmpMin]) {
+			status = false;
+			map[i] = tmpMin * 1.0f / 255;
+		} else {
+			if (!status) {
+				status = true;
+				tmpMin = tmpMax;
+				while (tmpMax < 256 && origCDF[i] < patternCDF[tmpMax]) {
+					++tmpMax;
+				}
+			}
+
+			if (origCDF[i] - tmpMin * 1.0f / 255 > tmpMax * 1.0f / 255 - origCDF[i]) {
+				map[i] = tmpMin * 1.0f / 255;
+			} else {
+				map[i] = tmpMax * 1.0f / 255;
+			}
+		}
+	}
+
+	Mat res(orig.rows, orig.cols, CV_32FC3);
+	rep(i, orig.rows) rep(j, orig.cols) {
+
+	}
+}
+
+void Utils::changePartialImageMatLightness(const Mat& mat, Mat& res, vector<float> deltas, int x0, int x1, int y0, int y1) {
+	float delta = deltas[0];
 	repa(i, x0, x1) repa(j, y0, y1) {
 		Vec3f rgb = mat.at<Vec3f>(i, j);
 		float maxValue, minValue;
@@ -226,23 +341,8 @@ void Utils::changePartialImageMatLightness(const Mat& mat, Mat& res, float delta
 	}
 }
 
-Mat Utils::changeImageMatSaturation(const Mat& mat, float delta) {
-	Mat res(mat.rows, mat.cols, CV_32FC3);
-	int x[5] = { 0, mat.rows / 4, mat.rows / 2, mat.rows * 3 / 4, mat.rows };
-	int y[3] = { 0, mat.cols / 2, mat.cols };
-	future<void> getPartialResult[8];
-	rep(i, 4) rep(j, 2) {
-		getPartialResult[i + i + j] = async(&Utils::changePartialImageMatSaturation, mat, res, delta, x[i], x[i + 1], y[j], y[j + 1]);
-	}
-
-	rep(i, 8) {
-		getPartialResult[i].get();
-	}
-
-	return res;
-}
-
-void Utils::changePartialImageMatSaturation(const Mat& mat, Mat& res, float delta, int x0, int x1, int y0, int y1) {
+void Utils::changePartialImageMatSaturation(const Mat& mat, Mat& res, vector<float> deltas, int x0, int x1, int y0, int y1) {
+	float delta = deltas[0];
 	repa(i, x0, x1) repa(j, y0, y1) {
 		Vec3f rgb = mat.at<Vec3f>(i, j);
 		float maxValue, minValue;
@@ -267,23 +367,8 @@ void Utils::changePartialImageMatSaturation(const Mat& mat, Mat& res, float delt
 	}
 }
 
-Mat Utils::changeImageMatHue(const Mat& mat, float delta) {
-	Mat res(mat.rows, mat.cols, CV_32FC3);
-	int x[5] = { 0, mat.rows / 4, mat.rows / 2, mat.rows * 3 / 4, mat.rows };
-	int y[3] = { 0, mat.cols / 2, mat.cols };
-	future<void> getPartialResult[8];
-	rep(i, 4) rep(j, 2) {
-		getPartialResult[i + i + j] = async(&Utils::changePartialImageMatHue, mat, res, delta, x[i], x[i + 1], y[j], y[j + 1]);
-	}
-
-	rep(i, 8) {
-		getPartialResult[i].get();
-	}
-
-	return res;
-}
-
-void Utils::changePartialImageMatHue(const Mat& mat, Mat& res, float delta, int x0, int x1, int y0, int y1) {
+void Utils::changePartialImageMatHue(const Mat& mat, Mat& res, vector<float> deltas, int x0, int x1, int y0, int y1) {
+	float delta = deltas[0];
 	repa(i, x0, x1) repa(j, y0, y1) {
 		Vec3f rgb = mat.at<Vec3f>(i, j);
 		Vec3f hsl = RGB2HSL(rgb);
@@ -294,5 +379,42 @@ void Utils::changePartialImageMatHue(const Mat& mat, Mat& res, float delta, int 
 			hsl[0] -= 360.0;
 		}
 		res.at<Vec3f>(i, j) = HSL2RGB(hsl);
+	}
+}
+
+void Utils::changePartialImageMatGamma(const Mat& mat, Mat& res, vector<float> deltas, int x0, int x1, int y0, int y1) {
+	float gamma = deltas[0];
+	float c = deltas[1];
+	repa(i, x0, x1) repa(j, y0, y1) {
+		Vec3f rgb = mat.at<Vec3f>(i, j);
+		res.at<Vec3f>(i, j) = Vec3f(pow(rgb[0], gamma) * c, pow(rgb[1], gamma) * c, pow(rgb[2], gamma) * c);
+	}
+}
+
+void Utils::changePartialImageMatLog(const Mat& mat, Mat& res, vector<float> deltas, int x0, int x1, int y0, int y1) {
+	float a = deltas[0];
+	float b = deltas[1];
+	float c = deltas[2];
+	repa(i, x0, x1) repa(j, y0, y1) {
+		Vec3f rgb = mat.at<Vec3f>(i, j);
+		Vec3f tmp;
+		tmp[0] = a + log(rgb[0] + 1) / (b * log(c));
+		tmp[1] = a + log(rgb[1] + 1) / (b * log(c));
+		tmp[2] = a + log(rgb[2] + 1) / (b * log(c));
+		res.at<Vec3f>(i, j) = tmp;
+	}
+}
+
+void Utils::changePartialImageMatPow(const Mat& mat, Mat& res, vector<float> deltas, int x0, int x1, int y0, int y1) {
+	float a = deltas[0];
+	float b = deltas[1];
+	float c = deltas[2];
+	repa(i, x0, x1) repa(j, y0, y1) {
+		Vec3f rgb = mat.at<Vec3f>(i, j);
+		Vec3f tmp;
+		tmp[0] = pow(b, c * (rgb[0] - a)) - 1;
+		tmp[1] = pow(b, c * (rgb[1] - a)) - 1;
+		tmp[2] = pow(b, c * (rgb[2] - a)) - 1;
+		res.at<Vec3f>(i, j) = tmp;
 	}
 }

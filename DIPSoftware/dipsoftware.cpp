@@ -1,6 +1,5 @@
 #include "EditImageCommand.h"
 #include "dipsoftware.h"
-#include "InputPreviewDialog.h"
 
 #include <QFileDialog>
 #include <QInputDialog>
@@ -20,6 +19,7 @@ DIPSoftware::DIPSoftware(QWidget *parent) : QMainWindow(parent) {
 	showMaximized();
 
 	imgWidget = new ImgWidget(this);
+	histogramWidget = new HistogramWidget(this);
 	originMat = nullptr;
 	mainLayout = new QHBoxLayout;
 	centerWidget = new QWidget(this);
@@ -48,12 +48,17 @@ DIPSoftware::DIPSoftware(QWidget *parent) : QMainWindow(parent) {
 	changeLightnessAction = new QAction(QStringLiteral("&亮度..."), this);
 	changeSaturationAction = new QAction(QStringLiteral("&饱和度..."), this);
 	changeHueAction = new QAction(QStringLiteral("&色相..."), this);
+	changeGammaAction = new QAction(QStringLiteral("&Gamma校正"), this);
+	changeLogAction = new QAction(QStringLiteral("&对数变换"), this);
+	changePowAction = new QAction(QStringLiteral("&指数变换"), this);
+	histEquAction = new QAction(QStringLiteral("&直方图均衡化"), this);
 
 	actionObservers = make_shared<vector<QAction*>>(initializer_list<QAction*>{
 		saveFileAction, saveAsFileAction, rotate90Action,
 		rotate180Action, rotate270Action, rotateAction,
 		horizontalFlipAction, verticalFlipAction, changeLightnessAction,
-		changeSaturationAction, changeHueAction
+		changeSaturationAction, changeHueAction, changeGammaAction,
+		changeLogAction, changePowAction, histEquAction
 	});
 
 	QMenu *fileMenu = menuBar()->addMenu(QStringLiteral("&文件"));
@@ -78,6 +83,12 @@ DIPSoftware::DIPSoftware(QWidget *parent) : QMainWindow(parent) {
 	changeMenu->addAction(changeLightnessAction);
 	changeMenu->addAction(changeSaturationAction);
 	changeMenu->addAction(changeHueAction);
+	imageMenu->addSeparator();
+	QMenu *nonLinearMenu = imageMenu->addMenu(QStringLiteral("&非线性变换"));
+	nonLinearMenu->addAction(changeGammaAction);
+	nonLinearMenu->addAction(changeLogAction);
+	nonLinearMenu->addAction(changePowAction);
+	imageMenu->addAction(histEquAction);
 
 	connect(imgWidget, &ImgWidget::setCropActionEnabled, this, bind(&QAction::setEnabled, cropAction, placeholders::_1));
 	connect(openFileAction, &QAction::triggered, this, &DIPSoftware::openFile);
@@ -90,21 +101,36 @@ DIPSoftware::DIPSoftware(QWidget *parent) : QMainWindow(parent) {
 	connect(rotateAction, &QAction::triggered, this, &DIPSoftware::rotateImageAnyAngle);
 	connect(horizontalFlipAction, &QAction::triggered, this, &DIPSoftware::horizontalFlipImage);
 	connect(verticalFlipAction, &QAction::triggered, this, &DIPSoftware::verticalFlipImage);
-	connect(changeLightnessAction, &QAction::triggered, this, [this](){
-		function<Mat(int)> lambdaFunc = [this](int d){ return Utils::changeImageMatLightness(*originMat, d * 1.0f / 100); };
-		changeImage(lambdaFunc, [this](function<Mat(int)> lambdaFunc, bool& ok){ return InputPreviewDialog::changeInt(this, imgWidget, lambdaFunc, QStringLiteral("亮度"), QStringLiteral("亮度："), 0, -150, 150, &ok); });
-	});
-	connect(changeSaturationAction, &QAction::triggered, this, [this](){
-		function<Mat(int)> lambdaFunc = [this](int d){ return Utils::changeImageMatSaturation(*originMat, d * 1.0f / 100); };
-		changeImage(lambdaFunc, [this](function<Mat(int)> lambdaFunc, bool& ok){ return InputPreviewDialog::changeInt(this, imgWidget, lambdaFunc, QStringLiteral("饱和度"), QStringLiteral("饱和度："), 0, -100, 100, &ok); });
-	});
-	connect(changeHueAction, &QAction::triggered, this, [this](){
-		function<Mat(int)> lambdaFunc = [this](int d){ return Utils::changeImageMatHue(*originMat, d); };
-		changeImage(lambdaFunc, [this](function<Mat(int)> lambdaFunc, bool& ok){ return InputPreviewDialog::changeInt(this, imgWidget, lambdaFunc, QStringLiteral("色相"), QStringLiteral("色相："), 0, -180, 180, &ok); });
-	});
+	connect(changeLightnessAction, &QAction::triggered, this, bind(&DIPSoftware::uiChangeImage, this, &Utils::changePartialImageMatLightness, QStringLiteral("亮度"), vector<ParameterInfo>{
+		ParameterInfo([](float d){ return exp(-d / 100); }, [](float d){ return -100 * log(d); }, QStringLiteral("亮度："), 0, -150, 150)
+	}));
+	connect(changeSaturationAction, &QAction::triggered, this, bind(&DIPSoftware::uiChangeImage, this, &Utils::changePartialImageMatSaturation, QStringLiteral("饱和度"), vector<ParameterInfo>{
+		ParameterInfo([](float d){ return d / 100; }, [](float d){ return 100 * d; }, QStringLiteral("饱和度："), 0, -100, 100)
+	}));
+	connect(changeHueAction, &QAction::triggered, this, bind(&DIPSoftware::uiChangeImage, this, &Utils::changePartialImageMatHue, QStringLiteral("色调"), vector<ParameterInfo>{
+		ParameterInfo([](float d){ return d; }, [](float d){ return d; }, QStringLiteral("色调："), 0, -180, 180)
+	}));
+	connect(changeGammaAction, &QAction::triggered, this, bind(&DIPSoftware::uiChangeImage, this, &Utils::changePartialImageMatGamma, QStringLiteral("Gamma校正"), vector<ParameterInfo>{
+		ParameterInfo([](float d){ return pow(10, d / 1000); }, [](float d){ return 1000 * log10(d); }, QStringLiteral("γ："), 0, -1400, 1400),
+		ParameterInfo([](float d){ return pow(10, d / 100); }, [](float d){ return 100 * log10(d); }, QStringLiteral("c："), 0, -100, 100)
+	}));
+	connect(changeLogAction, &QAction::triggered, this, bind(&DIPSoftware::uiChangeImage, this, &Utils::changePartialImageMatLog, QStringLiteral("对数变换"), vector<ParameterInfo>{
+		ParameterInfo([](float d){ return d / 100; }, [](float d){ return d * 100; }, QStringLiteral("a："), 0, -100, 100),
+		ParameterInfo([](float d){ return pow(10, d / 100); }, [](float d){ return 100 * log10(d); }, QStringLiteral("b："), 0, -100, 100),
+		ParameterInfo([](float d){ return d / 100; }, [](float d){ return 100 * d; }, QStringLiteral("c："), 200, 105, 1000)
+	}));
+	connect(changePowAction, &QAction::triggered, this, bind(&DIPSoftware::uiChangeImage, this, &Utils::changePartialImageMatPow, QStringLiteral("指数变换"), vector<ParameterInfo>{
+		ParameterInfo([](float d){ return d / 100; }, [](float d){ return d * 100; }, QStringLiteral("a："), 0, -100, 100),
+		ParameterInfo([](float d){ return d / 100; }, [](float d){ return 100 * d; }, QStringLiteral("b："), 230, 101, 1000),
+		ParameterInfo([](float d){ return pow(10, d / 100); }, [](float d){ return 100 * log10(d); }, QStringLiteral("c："), 0, -100, 100)
+	}));
+	connect(histEquAction, &QAction::triggered, this, &DIPSoftware::histEquImage);
+
+	histogramWidget->setFixedSize(400, 300);
+	mainLayout->addWidget(imgWidget);
+	mainLayout->addWidget(histogramWidget, 0, Qt::AlignTop);
 
 	setActionsEnabled(false);
-	mainLayout->addWidget(imgWidget);
 	centerWidget->setLayout(mainLayout);
 	setCentralWidget(centerWidget);
 }
@@ -125,6 +151,7 @@ void DIPSoftware::openFile() {
 	currentFileName = String((const char *) inputFileName.toLocal8Bit());
 	Mat imageMat = imread(currentFileName);
 	imgWidget->setImageMat(Utils::mat8U2Mat32F(imageMat));
+	histogramWidget->setImageMat(Utils::mat8U2Mat32F(imageMat));
 	setActionsEnabled(true);
 }
 
@@ -141,12 +168,12 @@ void DIPSoftware::saveAsFile() {
 void DIPSoftware::cropImage() {
 	QRect cropRect = imgWidget->getCropRect();
 	cv::Rect cvCropRect(cropRect.topLeft().x(), cropRect.topLeft().y(), cropRect.width(), cropRect.height());
-	undoStack->push(new EditImageCommand(imgWidget, *imgWidget->imgMat, (*imgWidget->imgMat)(cvCropRect)));
+	undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *imgWidget->imgMat, (*imgWidget->imgMat)(cvCropRect)));
 	imgWidget->removeLastItem();
 }
 
 void DIPSoftware::rotateImage(float theta) {
-	undoStack->push(new EditImageCommand(imgWidget, *imgWidget->imgMat, Utils::rotateImageMat(*(imgWidget->imgMat), theta)));
+	undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *imgWidget->imgMat, Utils::rotateImageMat(*(imgWidget->imgMat), theta)));
 }
 
 void DIPSoftware::rotateImageAnyAngle() {
@@ -163,7 +190,7 @@ void DIPSoftware::horizontalFlipImage() {
 		imgWidget->imgMat->col(image.cols - j - 1).copyTo(image.col(j));
 	}
 
-	undoStack->push(new EditImageCommand(imgWidget, *imgWidget->imgMat, image));
+	undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *imgWidget->imgMat, image));
 }
 
 void DIPSoftware::verticalFlipImage() {
@@ -172,21 +199,31 @@ void DIPSoftware::verticalFlipImage() {
 		imgWidget->imgMat->row(image.rows - i - 1).copyTo(image.row(i));
 	}
 
-	undoStack->push(new EditImageCommand(imgWidget, *imgWidget->imgMat, image));
+	undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *imgWidget->imgMat, image));
 }
 
-void DIPSoftware::changeImage(function<Mat(int)> lambdaFunc, function<int(function<Mat(int)>, bool&)> changeFunc) {
+void DIPSoftware::changeImage(function<Mat(vector<float>)> lambdaFunc, function<vector<float>(function<Mat(vector<float>)>, bool&)> changeFunc) {
 	setOriginMat();
 
 	bool ok;
-	int delta = changeFunc(lambdaFunc, ok);
+	vector<float> deltas = changeFunc(lambdaFunc, ok);
 	if (!ok) {
 		imgWidget->setImageMat(*originMat);
-	} else if (delta != -2147483647) {
-		undoStack->push(new EditImageCommand(imgWidget, *originMat, lambdaFunc(delta)));
+	} else if (deltas != vector<float>{}) {
+		undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *originMat, lambdaFunc(deltas)));
 	} else {
-		undoStack->push(new EditImageCommand(imgWidget, *originMat, *imgWidget->imgMat));
+		undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *originMat, *imgWidget->imgMat));
 	}
+}
+
+void DIPSoftware::uiChangeImage(Utils::changeFuncType changeFunc, const QString &title, const vector<ParameterInfo>& infos) {
+	auto lambdaFunc = [=](vector<float> d){ return Utils::changeImageMat(*originMat, d, changeFunc); };
+	changeImage(lambdaFunc, [=](function<Mat(vector<float>)> lambdaFunc, bool& ok){ return InputPreviewDialog::changeFloat(this, imgWidget, lambdaFunc, title, infos, &ok); });
+}
+
+void DIPSoftware::histEquImage() {
+	Mat image = Utils::histogramEqualization(*imgWidget->imgMat);
+	undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *imgWidget->imgMat, image));
 }
 
 void DIPSoftware::setActionsEnabled(bool enabled) {
