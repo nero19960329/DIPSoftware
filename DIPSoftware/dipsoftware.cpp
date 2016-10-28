@@ -52,13 +52,16 @@ DIPSoftware::DIPSoftware(QWidget *parent) : QMainWindow(parent) {
 	changeLogAction = new QAction(QStringLiteral("&对数变换"), this);
 	changePowAction = new QAction(QStringLiteral("&指数变换"), this);
 	histEquAction = new QAction(QStringLiteral("&直方图均衡化"), this);
+	histSpecSMLAction = new QAction(QStringLiteral("&单映射规则"), this);
+	histSpecGMLAction = new QAction(QStringLiteral("&组映射规则"), this);
 
 	actionObservers = make_shared<vector<QAction*>>(initializer_list<QAction*>{
 		saveFileAction, saveAsFileAction, rotate90Action,
 		rotate180Action, rotate270Action, rotateAction,
 		horizontalFlipAction, verticalFlipAction, changeLightnessAction,
 		changeSaturationAction, changeHueAction, changeGammaAction,
-		changeLogAction, changePowAction, histEquAction
+		changeLogAction, changePowAction, histEquAction,
+		histSpecSMLAction, histSpecGMLAction
 	});
 
 	QMenu *fileMenu = menuBar()->addMenu(QStringLiteral("&文件"));
@@ -89,6 +92,9 @@ DIPSoftware::DIPSoftware(QWidget *parent) : QMainWindow(parent) {
 	nonLinearMenu->addAction(changeLogAction);
 	nonLinearMenu->addAction(changePowAction);
 	imageMenu->addAction(histEquAction);
+	QMenu *histSpecMenu = imageMenu->addMenu(QStringLiteral("&直方图规定化"));
+	histSpecMenu->addAction(histSpecSMLAction);
+	histSpecMenu->addAction(histSpecGMLAction);
 
 	connect(imgWidget, &ImgWidget::setCropActionEnabled, this, bind(&QAction::setEnabled, cropAction, placeholders::_1));
 	connect(openFileAction, &QAction::triggered, this, &DIPSoftware::openFile);
@@ -125,6 +131,8 @@ DIPSoftware::DIPSoftware(QWidget *parent) : QMainWindow(parent) {
 		ParameterInfo([](float d){ return pow(10, d / 100); }, [](float d){ return 100 * log10(d); }, QStringLiteral("c："), 0, -100, 100)
 	}));
 	connect(histEquAction, &QAction::triggered, this, &DIPSoftware::histEquImage);
+	connect(histSpecSMLAction, &QAction::triggered, this, &DIPSoftware::histSpecSMLImage);
+	connect(histSpecGMLAction, &QAction::triggered, this, &DIPSoftware::histSpecGMLImage);
 
 	histogramWidget->setFixedSize(400, 300);
 	mainLayout->addWidget(imgWidget);
@@ -223,6 +231,26 @@ void DIPSoftware::uiChangeImage(Utils::changeFuncType changeFunc, const QString 
 
 void DIPSoftware::histEquImage() {
 	Mat image = Utils::histogramEqualization(*imgWidget->imgMat);
+	undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *imgWidget->imgMat, image));
+}
+
+void DIPSoftware::histSpecSMLImage() {
+	QString inputFileName = QFileDialog::getOpenFileName(this, QStringLiteral("打开文件"), " ", QStringLiteral("图像文件(*.bmp;*.png;*.jpg;*.jpeg)"));
+	if (!inputFileName.size()) {
+		return;
+	}
+	Mat patternMat = Utils::mat8U2Mat32F(imread(String((const char *) inputFileName.toLocal8Bit())));
+	Mat image = Utils::histogramSpecificationSML(*imgWidget->imgMat, patternMat);
+	undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *imgWidget->imgMat, image));
+}
+
+void DIPSoftware::histSpecGMLImage() {
+	QString inputFileName = QFileDialog::getOpenFileName(this, QStringLiteral("打开文件"), " ", QStringLiteral("图像文件(*.bmp;*.png;*.jpg;*.jpeg)"));
+	if (!inputFileName.size()) {
+		return;
+	}
+	Mat patternMat = Utils::mat8U2Mat32F(imread(String((const char *) inputFileName.toLocal8Bit())));
+	Mat image = Utils::histogramSpecificationGML(*imgWidget->imgMat, patternMat);
 	undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *imgWidget->imgMat, image));
 }
 

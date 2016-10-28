@@ -39,6 +39,8 @@ private:
 	void changeImage(std::function<cv::Mat(std::vector<float>)> lambdaFunc, std::function<std::vector<float>(std::function<cv::Mat(std::vector<float>)>, bool&)> changeFunc);
 	void uiChangeImage(Utils::changeFuncType changeFunc, const QString &title, const std::vector<ParameterInfo> &infos);
 	void histEquImage();
+	void histSpecSMLImage();
+	void histSpecGMLImage();
 
 	void setActionsEnabled(bool enabled);
 
@@ -71,6 +73,8 @@ private:
 	QAction *changePowAction;
 
 	QAction *histEquAction;
+	QAction *histSpecSMLAction;
+	QAction *histSpecGMLAction;
 
 	std::shared_ptr<std::vector<QAction*>> actionObservers;
 

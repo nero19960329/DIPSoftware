@@ -83,6 +83,9 @@
     <ClCompile Include="GeneratedFiles\Release\moc_HistogramWidget.cpp">
       <Filter>Generated Files\Release</Filter>
     </ClCompile>
+    <ClCompile Include="DebugUtils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="dipsoftware.h">
@@ -112,6 +115,9 @@
       <Filter>Generated Files</Filter>
     </ClInclude>
     <ClInclude Include="Utils.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="DebugUtils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

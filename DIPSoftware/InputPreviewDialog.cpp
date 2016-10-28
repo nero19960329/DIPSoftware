@@ -91,7 +91,12 @@ void InputPreviewDialog::setLabelText(const vector<QString>& texts) {
 void InputPreviewDialog::setRange(std::vector<std::function<float(float)>> deltaFuncs, const vector<float>& mins, const vector<float>& maxs) {
 	rep(i, parameterLen) {
 		sliders[i]->setRange(mins[i], maxs[i]);
-		spinBoxes[i]->setRange(deltaFuncs[i](mins[i]), deltaFuncs[i](maxs[i]));
+		float bound[2] = { deltaFuncs[i](mins[i]), deltaFuncs[i](maxs[i]) };
+		if (bound[0] < bound[1]) {
+			spinBoxes[i]->setRange(bound[0], bound[1]);
+		} else {
+			spinBoxes[i]->setRange(bound[1], bound[0]);
+		}
 	}
 }
 
