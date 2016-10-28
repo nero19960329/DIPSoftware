@@ -6,16 +6,8 @@
 using namespace cv;
 using namespace std;
 
-InputPreviewDialog::InputPreviewDialog(ImgWidget *widget, function<Mat(vector<float>)> lambdaFunc, QWidget *parent, Qt::WindowFlags flags) : QDialog(parent, flags) {
-	imgWidget = widget;
-	title = nullptr;
-	previewCheckBox = 0;
-	buttonBox = 0;
-	mainLayout = 0;
-	matFloatFunc = lambdaFunc;
-	previewFlag = true;
-	parameterLen = 0;
-}
+InputPreviewDialog::InputPreviewDialog(ImgWidget *widget, function<Mat(vector<float>)> lambdaFunc, QWidget *parent, Qt::WindowFlags flags) : QDialog(parent, flags), 
+	imgWidget(widget), title(nullptr), previewCheckBox(nullptr), buttonBox(nullptr), mainLayout(nullptr), matFloatFunc(lambdaFunc), previewFlag(true), parameterLen(0) {}
 
 InputPreviewDialog::~InputPreviewDialog() {
 
@@ -69,7 +61,7 @@ void InputPreviewDialog::ensureSpinBoxes(vector<function<float(float)>> deltaFun
 
 void InputPreviewDialog::ensureCheckBox(vector<function<float(float)>> deltaFuncs) {
 	if (!previewCheckBox) {
-		previewCheckBox = new QCheckBox(QStringLiteral("¿ªÆôÔ¤ÀÀ"), this);
+		previewCheckBox = new QCheckBox(QSL("¿ªÆôÔ¤ÀÀ"), this);
 		previewCheckBox->setChecked(true);
 		QObject::connect(previewCheckBox, &QCheckBox::clicked, this, bind(&InputPreviewDialog::setPreviewMode, this, deltaFuncs, placeholders::_1));
 	}

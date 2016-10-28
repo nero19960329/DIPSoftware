@@ -1,5 +1,4 @@
-#ifndef UTILS_H
-#define UTILS_H
+#pragma once
 
 #include <QImage>
 
@@ -23,6 +22,8 @@
 #define rep(x, y) for (decltype(y) x{0}; x < (y); ++x)
 #define repa(x, y, z) for (decltype(z) x{y}; x < (z); ++x)
 #define repd(x, y, z) for (decltype(z) x{y}; x >= (z); --x)
+
+#define QSL(x) QStringLiteral(x)
 
 template<typename T>
 inline void updateMax(T& value, const T& max) {
@@ -66,5 +67,3 @@ public:
 	static void changePartialImageMatLog(const cv::Mat& mat, cv::Mat& res, std::vector<float> deltas, int x0, int x1, int y0, int y1);
 	static void changePartialImageMatPow(const cv::Mat& mat, cv::Mat& res, std::vector<float> deltas, int x0, int x1, int y0, int y1);
 };
-
-#endif

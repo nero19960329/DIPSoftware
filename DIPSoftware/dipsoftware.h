@@ -1,9 +1,9 @@
-#ifndef DIPSOFTWARE_H
-#define DIPSOFTWARE_H
+#pragma once
 
 #include <QtWidgets/QMainWindow>
 #include "ui_dipsoftware.h"
 
+#include "DiagramWidget.h"
 #include "HistogramWidget.h"
 #include "ImgWidget.h"
 #include "InputPreviewDialog.h"
@@ -38,6 +38,7 @@ private:
 	void verticalFlipImage();
 	void changeImage(std::function<cv::Mat(std::vector<float>)> lambdaFunc, std::function<std::vector<float>(std::function<cv::Mat(std::vector<float>)>, bool&)> changeFunc);
 	void uiChangeImage(Utils::changeFuncType changeFunc, const QString &title, const std::vector<ParameterInfo> &infos);
+	void linearConvertImage();
 	void histEquImage();
 	void histSpecSMLImage();
 	void histSpecGMLImage();
@@ -68,6 +69,7 @@ private:
 	QAction *changeSaturationAction;
 	QAction *changeHueAction;
 
+	QAction *linearConvertAction;
 	QAction *changeGammaAction;
 	QAction *changeLogAction;
 	QAction *changePowAction;
@@ -83,9 +85,10 @@ private:
 	QHBoxLayout *mainLayout;
 	QWidget *centerWidget;
 
+	DiagramWidget *diagramWidget;
 	HistogramWidget *histogramWidget;
 	ImgWidget *imgWidget;
 	std::shared_ptr<cv::Mat> originMat;
 };
 
-#endif // DIPSOFTWARE_H
+// DIPSOFTWARE_H

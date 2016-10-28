@@ -68,7 +68,7 @@ ImgWidget::ImgWidget(QWidget *parent) : QWidget(parent) {
 	mainLayout = new QHBoxLayout;
 
 	popMenu = new QMenu;
-	cancelCropRectAction = new QAction(QStringLiteral("取消选中"), this);
+	cancelCropRectAction = new QAction(QSL("取消选中"), this);
 
 	connect(cancelCropRectAction, &QAction::triggered, this, &ImgWidget::removeLastItem);
 

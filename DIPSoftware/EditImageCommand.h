@@ -1,5 +1,4 @@
-#ifndef EDITIMAGECOMMAND_H
-#define EDITIMAGECOMMAND_H
+#pragma once
 
 #include <QUndoCommand>
 
@@ -22,5 +21,3 @@ private:
 	ImgWidget *imgWidget;
 	HistogramWidget *histogramWidget;
 };
-
-#endif

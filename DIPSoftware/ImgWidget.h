@@ -1,5 +1,4 @@
-#ifndef IMGWIDGET_H
-#define IMGWIDGET_H
+#pragma once
 
 #include <QAction>
 #include <QContextMenuEvent>
@@ -75,5 +74,3 @@ private:
 public:
 	std::shared_ptr<cv::Mat> imgMat;
 };
-
-#endif

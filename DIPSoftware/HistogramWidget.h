@@ -12,7 +12,7 @@ class HistogramWidget : public QWidget {
 
 public:
 	HistogramWidget(QWidget *parent = 0) : QWidget(parent) {}
-	~HistogramWidget() {}
+	virtual ~HistogramWidget() {}
 
 	void setImageMat(const cv::Mat& mat);
 

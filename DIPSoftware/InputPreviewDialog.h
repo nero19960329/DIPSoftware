@@ -1,5 +1,4 @@
-#ifndef INPUTPREIVEWDIALOG_H
-#define INPUTPREVIEWDIALOG_H
+#pragma once
 
 #include <QCheckBox>
 #include <QDialog>
@@ -65,7 +64,4 @@ public slots:
 
 public:
 	static std::vector<float> changeFloat(QWidget *parent, ImgWidget *widget, const std::function<cv::Mat(std::vector<float>)>& lambdaFunc, const QString &title, const std::vector<ParameterInfo>& infos, bool *ok = 0, Qt::WindowFlags flags = 0);
-	//static std::vector<float> changeFloat(QWidget *parent, ImgWidget *widget, std::function<cv::Mat(std::vector<float>)> lambdaFunc, const QString &title, const QString &label, float value = 0, float minValue = -2147483647, float maxValue = 2147483647, bool *ok = 0, Qt::WindowFlags flags = 0);
 };
-
-#endif

@@ -1,5 +1,6 @@
 #include "HistogramWidget.h"
 #include "Utils.h"
+#include "DebugUtils.h"
 
 #include <QPainter>
 
@@ -34,7 +35,6 @@ void HistogramWidget::paintEvent(QPaintEvent *event) {
 	yStep = (h - 2) * 1.0f / maxCount;
 
 	rep(i, 256) {
-		//p.setBrush(QBrush(QColor(250, 250, 250)));
-		p.drawRect(1 + i * xStep, 1 + yStep * (maxCount - histogramArr[i]), xStep, yStep * histogramArr[i]);
+		p.fillRect(QRectF(1 + i * xStep, 1 + yStep * (maxCount - histogramArr[i]), xStep, yStep * histogramArr[i]), QBrush(QColor(150, 150, 150)));
 	}
 }
