@@ -242,13 +242,13 @@ void DIPSoftware::linearConvertImage() {
 	setOriginMat();
 
 	bool ok;
-	list<pair<float, float>> vertices = DiagramPreviewDialog::changeDiagram(this, imgWidget, QSL("分段线性变换"), &ok);
+	list<pair<float, float>> vertices = DiagramPreviewDialog::changeDiagram(this, imgWidget, bind(&Utils::linearConvert, *originMat, placeholders::_1), QSL("分段线性变换"), &ok);
 	if (!ok) {
 		imgWidget->setImageMat(*originMat);
 	} else if (vertices.size()) {
-		//undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *originMat, )))
+		undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *originMat, Utils::linearConvert(*originMat, vertices)));
 	} else {
-		//
+		undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *originMat, *imgWidget->imgMat));
 	}
 }
 

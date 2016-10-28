@@ -4,17 +4,15 @@
 #include <QPaintEvent>
 #include <QWidget>
 
-#include "HistogramWidget.h"
-
 #include <list>
 
-class DiagramWidget : public HistogramWidget {
+class DiagramWidget : public QWidget {
 	Q_OBJECT
 
 public:
 	std::list<std::pair<float, float>> vertices;
 
-	DiagramWidget(QWidget *parent = 0) : HistogramWidget(parent), vertices(std::list<std::pair<float, float>>{ std::make_pair(0, 0), std::make_pair(1, 1) }), isPressed(false) {}
+	DiagramWidget(QWidget *parent = 0) : QWidget(parent), vertices(std::list<std::pair<float, float>>{ std::make_pair(0, 0), std::make_pair(1, 1) }), isPressed(false) {}
 	~DiagramWidget() {}
 
 	void paintEvent(QPaintEvent *);

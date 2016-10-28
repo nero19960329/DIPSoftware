@@ -1,10 +1,11 @@
 #include "DiagramPreviewDialog.h"
 #include "Utils.h"
 
+using namespace cv;
 using namespace std;
 
-DiagramPreviewDialog::DiagramPreviewDialog(ImgWidget *_imgWidget, QWidget *parent, Qt::WindowFlags flags) : QDialog(parent, flags),
-	imgWidget(_imgWidget), title(nullptr), previewCheckBox(nullptr), buttonBox(nullptr), mainLayout(nullptr), diagramWidget(nullptr), previewFlag(false) {}
+DiagramPreviewDialog::DiagramPreviewDialog(ImgWidget *_imgWidget, matListType _matListFunc, QWidget *parent, Qt::WindowFlags flags) : QDialog(parent, flags),
+	imgWidget(_imgWidget), matListFunc(_matListFunc), title(nullptr), previewCheckBox(nullptr), buttonBox(nullptr), mainLayout(nullptr), diagramWidget(nullptr), previewFlag(true) {}
 
 DiagramPreviewDialog::~DiagramPreviewDialog() {}
 
@@ -36,19 +37,29 @@ void DiagramPreviewDialog::ensureCheckBox() {
 	if (!previewCheckBox) {
 		previewCheckBox = new QCheckBox(QSL("¿ªÆôÔ¤ÀÀ"), this);
 		previewCheckBox->setChecked(true);
-		//QObject::connect();
+		QObject::connect(previewCheckBox, &QCheckBox::clicked, this, &DiagramPreviewDialog::setPreviewMode);
 	}
 }
 
 void DiagramPreviewDialog::setPreviewMode(bool mode) {
+	previewFlag = mode;
 
+	if (previewFlag) {
+		imgWidget->setImageMat(matListFunc(diagramWidget->vertices));
+		QObject::connect(diagramWidget, &DiagramWidget::valueChanged, this, [=](const list<pair<float, float>>& vertices) {
+			imgWidget->setImageMat(matListFunc(vertices));
+		});
+	} else {
+		QObject::disconnect(diagramWidget, 0, this, 0);
+	}
 }
 
-list<pair<float, float>> DiagramPreviewDialog::changeDiagram(QWidget *parent, ImgWidget *_imgWidget, const QString &title, bool *ok, Qt::WindowFlags flags) {
-	DiagramPreviewDialog dialog(_imgWidget, parent, flags);
+list<pair<float, float>> DiagramPreviewDialog::changeDiagram(QWidget *parent, ImgWidget *_imgWidget, matListType _matListFunc, const QString &title, bool *ok, Qt::WindowFlags flags) {
+	DiagramPreviewDialog dialog(_imgWidget, _matListFunc, parent, flags);
 	dialog.setWindowTitle(title);
 	dialog.ensureDiagram();
 	dialog.ensureCheckBox();
+	dialog.setPreviewMode(true);
 	dialog.ensureLayout();
 
 	int ret = dialog.exec();

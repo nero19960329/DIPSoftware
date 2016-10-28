@@ -305,6 +305,30 @@ array<float, 256> Utils::getCDF(const array<int, 256>& hist, int pixels) {
 	return res;
 }
 
+Mat Utils::linearConvert(const Mat& mat, const list<pair<float, float>>& vertices) {
+	auto cvt = [=](float d){ return (int) (d * 255 + 0.5); };
+
+	array<float, 256> map;
+	auto it = vertices.begin();
+	auto nextIt = vertices.begin();
+	++nextIt;
+	rep(i, 256) {
+		if (i > cvt(nextIt->first)) {
+			++it;
+			++nextIt;
+		}
+		map[i] = ((nextIt->second - it->second) * i / 255 + (it->second * nextIt->first - it->first * nextIt->second)) / (nextIt->first - it->first);
+	}
+
+	Mat res(mat.rows, mat.cols, CV_32FC3);
+	rep(i, mat.rows) rep(j, mat.cols) {
+		Vec3f rgb = mat.at<Vec3f>(i, j);
+		res.at<Vec3f>(i, j) = { map[cvt(rgb[0])], map[cvt(rgb[1])], map[cvt(rgb[2])] };
+	}
+
+	return res;
+}
+
 Mat Utils::histogramEqualization(const Mat& mat) {
 	array<int, 256> hist = getHistogram3Channel(mat);
 	array<float, 256> cdf = getCDF(hist, mat.rows * mat.cols * 3);

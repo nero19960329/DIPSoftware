@@ -1,4 +1,4 @@
-#include "InputPreviewDialog.h"
+ #include "InputPreviewDialog.h"
 #include "Utils.h"
 
 #include <QDebug>

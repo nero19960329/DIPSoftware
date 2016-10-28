@@ -56,6 +56,8 @@ public:
 	static std::array<int, 256> getHistogram1Channel(const cv::Mat& mat, int channel);
 	static std::array<int, 256> getHistogram3Channel(const cv::Mat& mat);
 	static std::array<float, 256> getCDF(const std::array<int, 256>& hist, int pixels);
+
+	static cv::Mat linearConvert(const cv::Mat& mat, const std::list<std::pair<float, float>> &vertices);
 	static cv::Mat histogramEqualization(const cv::Mat& mat);
 	static cv::Mat histogramSpecificationSML(const cv::Mat& orig, const cv::Mat& pattern);
 	static cv::Mat histogramSpecificationGML(const cv::Mat& orig, const cv::Mat& pattern);

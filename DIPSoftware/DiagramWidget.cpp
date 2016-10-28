@@ -30,11 +30,24 @@ void DiagramWidget::paintEvent(QPaintEvent *event) {
 void DiagramWidget::mousePressEvent(QMouseEvent *event) {
 	isPressed = true;
 	pair<float, float> pos = point2Pair(event->pos());
+
+	for (const auto &vertex : vertices) {
+		if (fabs(pos.first - vertex.first) < 5e-2) {
+			pos.first = vertex.first;
+			break;
+		}
+	}
+
 	auto it = vertices.begin();
 	auto nextIt = vertices.begin();
 	++nextIt;
 	for (; nextIt != vertices.end(); ++it, ++nextIt) {
-		if (pos.first > it->first && pos.first < nextIt->first) {
+		if (pos.first == it->first) {
+			it->second = pos.second;
+			emit(valueChanged(vertices));
+			vertexIt = it;
+			break;
+		} else if (pos.first > it->first && pos.first < nextIt->first) {
 			vertices.insert(++it, pos);
 			emit(valueChanged(vertices));
 			vertexIt = --it;
@@ -52,7 +65,24 @@ void DiagramWidget::mousePressEvent(QMouseEvent *event) {
 void DiagramWidget::mouseMoveEvent(QMouseEvent *event) {
 	if (isPressed) {
 		pair<float, float> pos = point2Pair(event->pos());
-		*vertexIt = pos;
+
+		if (vertexIt->first >= 1.0f - 1e-3) {
+			vertexIt->second = pos.second;
+		} else {
+			auto lastIt = vertices.begin();
+			if (vertexIt != vertices.begin()) {
+				lastIt = --vertexIt;
+				++vertexIt;
+			}
+
+			if (pos.first < lastIt->first + 1e-2) {
+				vertexIt->first = lastIt->first + 1e-2;
+				vertexIt->second = pos.second;
+			} else {
+				*vertexIt = pos;
+			}
+		}
+
 		emit(valueChanged(vertices));
 	}
 	repaint();
