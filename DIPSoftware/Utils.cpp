@@ -365,9 +365,6 @@ Mat Utils::histogramSpecificationGML(const Mat& orig, const Mat& pattern) {
 			} else {
 				if (patternCDF[k][i] > origCDF[k][tmpMax]) {
 					while (tmpMax < 256 && patternCDF[k][i] > origCDF[k][tmpMax]) ++tmpMax;
-					if (tmpMax >= 256) {
-						print_debug("pattern : %.10f\torig : %.10f\n", patternCDF[k][i], origCDF[k][255]);
-					}
 					tmpMin = tmpMax - 1;
 				}
 
