@@ -44,58 +44,17 @@ QString Utils::getExtension(const String& str) {
 	return res;
 }
 
-void Utils::getSequence(const Vec3f &vec, float &max, float &mid, float &min) {
-	if (vec[0] >= vec[1] && vec[0] >= vec[2]) {
-		max = vec[0];
-		mid = vec[1];
-		min = vec[2];
-	} else if (vec[0] >= vec[2] && vec[2] >= vec[1]) {
-		max = vec[0];
-		mid = vec[2];
-		min = vec[1];
-	} else if (vec[1] >= vec[0] && vec[0] >= vec[2]) {
-		max = vec[1];
-		mid = vec[0];
-		min = vec[2];
-	} else if (vec[1] >= vec[2] && vec[2] >= vec[0]) {
-		max = vec[1];
-		mid = vec[2];
-		min = vec[0];
-	} else if (vec[2] >= vec[0] && vec[0] >= vec[1]) {
-		max = vec[2];
-		mid = vec[0];
-		min = vec[1];
-	} else {
-		max = vec[2];
-		mid = vec[1];
-		min = vec[0];
-	}
-}
-
-Mat Utils::mat8U2Mat32F(const Mat& mat8U) {
-	Mat mat32F(mat8U.rows, mat8U.cols, CV_32FC3);
-	mat8U.convertTo(mat32F, CV_32FC3, 1.0f / 255);
-	return mat32F;
-}
-
-Mat Utils::mat32F2Mat8U(const Mat& mat32F) {
-	Mat mat8U(mat32F.rows, mat32F.cols, CV_8UC3);
-	mat32F.convertTo(mat8U, CV_8UC3, 255, 0.5);
-	return mat8U;
-}
-
 QImage Utils::mat2QImage(const Mat& mat) {
-	if (mat.type() == CV_32FC3) {
-		Mat mat8U = mat32F2Mat8U(mat);
-		const uchar *pSrc = (const uchar*) mat8U.data;
-		QImage image(pSrc, mat8U.cols, mat8U.rows, mat8U.step, QImage::Format_RGB888);
+	if (mat.type() == CV_8UC3) {
+		const uchar *pSrc = (const uchar*) mat.data;
+		QImage image(pSrc, mat.cols, mat.rows, mat.step, QImage::Format_RGB888);
 		return image.rgbSwapped();
 	} else {
 		return QImage();
 	}
 }
 
-Vec3f Utils::biLinearInterpolation(const Mat& mat, float x, float y) {
+Vec3b Utils::biLinearInterpolation(const Mat& mat, float x, float y) {
 	int x1, x2, y1, y2;
 	x1 = (int) x;
 	y1 = (int) y;
@@ -105,41 +64,41 @@ Vec3f Utils::biLinearInterpolation(const Mat& mat, float x, float y) {
 	float r, g, b;
 
 	if (x < mat.rows - 1 && y < mat.cols - 1) {
-		r = mat.at<Vec3f>(x1, y1)[0] * (x2 - x) * (y2 - y) +
-			mat.at<Vec3f>(x2, y1)[0] * (x - x1) * (y2 - y) +
-			mat.at<Vec3f>(x1, y2)[0] * (x2 - x) * (y - y1) +
-			mat.at<Vec3f>(x2, y2)[0] * (x - x1) * (y - y1);
-		g = mat.at<Vec3f>(x1, y1)[1] * (x2 - x) * (y2 - y) +
-			mat.at<Vec3f>(x2, y1)[1] * (x - x1) * (y2 - y) +
-			mat.at<Vec3f>(x1, y2)[1] * (x2 - x) * (y - y1) +
-			mat.at<Vec3f>(x2, y2)[1] * (x - x1) * (y - y1);
-		b = mat.at<Vec3f>(x1, y1)[2] * (x2 - x) * (y2 - y) +
-			mat.at<Vec3f>(x2, y1)[2] * (x - x1) * (y2 - y) +
-			mat.at<Vec3f>(x1, y2)[2] * (x2 - x) * (y - y1) +
-			mat.at<Vec3f>(x2, y2)[2] * (x - x1) * (y - y1);
+		r = mat.at<Vec3b>(x1, y1)[0] * (x2 - x) * (y2 - y) +
+			mat.at<Vec3b>(x2, y1)[0] * (x - x1) * (y2 - y) +
+			mat.at<Vec3b>(x1, y2)[0] * (x2 - x) * (y - y1) +
+			mat.at<Vec3b>(x2, y2)[0] * (x - x1) * (y - y1);
+		g = mat.at<Vec3b>(x1, y1)[1] * (x2 - x) * (y2 - y) +
+			mat.at<Vec3b>(x2, y1)[1] * (x - x1) * (y2 - y) +
+			mat.at<Vec3b>(x1, y2)[1] * (x2 - x) * (y - y1) +
+			mat.at<Vec3b>(x2, y2)[1] * (x - x1) * (y - y1);
+		b = mat.at<Vec3b>(x1, y1)[2] * (x2 - x) * (y2 - y) +
+			mat.at<Vec3b>(x2, y1)[2] * (x - x1) * (y2 - y) +
+			mat.at<Vec3b>(x1, y2)[2] * (x2 - x) * (y - y1) +
+			mat.at<Vec3b>(x2, y2)[2] * (x - x1) * (y - y1);
 	} else if (x == mat.rows - 1 && y < mat.cols - 1) {
-		r = mat.at<Vec3f>(x1, y1)[0] * (y2 - y) + mat.at<Vec3f>(x1, y2)[0] * (y - y1);
-		g = mat.at<Vec3f>(x1, y1)[1] * (y2 - y) + mat.at<Vec3f>(x1, y2)[1] * (y - y1);
-		b = mat.at<Vec3f>(x1, y1)[2] * (y2 - y) + mat.at<Vec3f>(x1, y2)[2] * (y - y1);
+		r = mat.at<Vec3b>(x1, y1)[0] * (y2 - y) + mat.at<Vec3b>(x1, y2)[0] * (y - y1);
+		g = mat.at<Vec3b>(x1, y1)[1] * (y2 - y) + mat.at<Vec3b>(x1, y2)[1] * (y - y1);
+		b = mat.at<Vec3b>(x1, y1)[2] * (y2 - y) + mat.at<Vec3b>(x1, y2)[2] * (y - y1);
 	} else if (x < mat.rows - 1 && y == mat.cols - 1) {
-		r = mat.at<Vec3f>(x1, y1)[0] * (x2 - x) + mat.at<Vec3f>(x2, y1)[0] * (x - x1);
-		g = mat.at<Vec3f>(x1, y1)[1] * (x2 - x) + mat.at<Vec3f>(x2, y1)[1] * (x - x1);
-		b = mat.at<Vec3f>(x1, y1)[2] * (x2 - x) + mat.at<Vec3f>(x2, y1)[2] * (x - x1);
+		r = mat.at<Vec3b>(x1, y1)[0] * (x2 - x) + mat.at<Vec3b>(x2, y1)[0] * (x - x1);
+		g = mat.at<Vec3b>(x1, y1)[1] * (x2 - x) + mat.at<Vec3b>(x2, y1)[1] * (x - x1);
+		b = mat.at<Vec3b>(x1, y1)[2] * (x2 - x) + mat.at<Vec3b>(x2, y1)[2] * (x - x1);
 	} else {
-		r = mat.at<Vec3f>(x1, y1)[0];
-		g = mat.at<Vec3f>(x1, y1)[1];
-		b = mat.at<Vec3f>(x1, y1)[2];
+		r = mat.at<Vec3b>(x1, y1)[0];
+		g = mat.at<Vec3b>(x1, y1)[1];
+		b = mat.at<Vec3b>(x1, y1)[2];
 	}
 
-	return { r, g, b };
+	return { touc(r), touc(g), touc(b) };
 }
 
-Vec3f Utils::RGB2HSL(Vec3f rgb) {
+Vec3f Utils::RGB2HSL(Vec3b rgb) {
 	float h, s, l;
 	float r, g, b;
-	r = rgb[2];
-	g = rgb[1];
-	b = rgb[0];
+	r = rgb[2] * 1.0 / 255;
+	g = rgb[1] * 1.0 / 255;
+	b = rgb[0] * 1.0 / 255;
 
 	float maxValue, minValue;
 	minValue = min(r, min(g, b));
@@ -173,14 +132,14 @@ Vec3f Utils::RGB2HSL(Vec3f rgb) {
 	return { h, s, l };
 }
 
-Vec3f Utils::HSL2RGB(Vec3f hsl) {
+Vec3b Utils::HSL2RGB(Vec3f hsl) {
 	float h, s, l;
 	h = hsl[0];
 	s = hsl[1];
 	l = hsl[2];
 
 	if (s < 1e-3) {
-		return { l, l, l };
+		return { touc(l), touc(l), touc(l) };
 	}
 
 	float rgb[3];
@@ -214,18 +173,7 @@ Vec3f Utils::HSL2RGB(Vec3f hsl) {
 		}
 	}
 
-	return { rgb[2], rgb[1], rgb[0] };
-}
-
-Mat Utils::updateImageMat(const Mat& mat) {
-	Mat res(mat);
-	rep(i, res.rows) rep(j, res.cols) {
-		Vec3f &rgb = res.at<Vec3f>(i, j);
-		updateMinMax(rgb[0], 1.0f, 0.0f);
-		updateMinMax(rgb[1], 1.0f, 0.0f);
-		updateMinMax(rgb[2], 1.0f, 0.0f);
-	}
-	return res;
+	return { touc(rgb[2] * 255), touc(rgb[1] * 255), touc(rgb[0] * 255) };
 }
 
 Mat Utils::rotateImageMat(const Mat& mat, float theta) {
@@ -243,15 +191,15 @@ Mat Utils::rotateImageMat(const Mat& mat, float theta) {
 	dx = (newW - w) * 1.0 / 2;
 	dy = (newH - h) * 1.0 / 2;
 
-	Mat res(newW, newH, CV_32FC3);
+	Mat res(newW, newH, CV_8UC3);
 	rep(i, res.rows) rep(j, res.cols) {
 		float x, y;
 		x = cosTheta * (i - cx - dx) - sinTheta * (j - cy - dy) + cx;
 		y = sinTheta * (i - cx - dx) + cosTheta * (j - cy - dy) + cy;
 		if (betw(x, -EPSILON, w + EPSILON) && betw(y, -EPSILON, h + EPSILON)) {
-			res.at<Vec3f>(i, j) = biLinearInterpolation(mat, x, y);
+			res.at<Vec3b>(i, j) = biLinearInterpolation(mat, x, y);
 		} else {
-			res.at<Vec3f>(i, j) = { 1.0f, 1.0f, 1.0f };
+			res.at<Vec3b>(i, j) = { 255, 255, 255 };
 		}
 	}
 
@@ -259,7 +207,7 @@ Mat Utils::rotateImageMat(const Mat& mat, float theta) {
 }
 
 Mat Utils::changeImageMat(const Mat& mat, vector<float> deltas, changeFuncType changeFunc) {
-	Mat res(mat.rows, mat.cols, CV_32FC3);
+	Mat res(mat.rows, mat.cols, CV_8UC3);
 
 	int x[5] = { 0, mat.rows / 4, mat.rows / 2, mat.rows * 3 / 4, mat.rows };
 	int y[3] = { 0, mat.cols / 2, mat.cols };
@@ -279,8 +227,8 @@ array<int, 256> Utils::getHistogram(const Mat& mat) {
 	array<int, 256> res;
 	fill(res.begin(), res.end(), 0);
 	rep(i, mat.rows) rep(j, mat.cols) {
-		Vec3f rgb = mat.at<Vec3f>(i, j);
-		unsigned int grey = (rgb[0] + rgb[1] + rgb[2]) * 85.0 + 0.5;
+		Vec3b rgb = mat.at<Vec3b>(i, j);
+		uchar grey = touc((rgb[0] + rgb[1] + rgb[2]) * 1.0 / 3);
 		++res[grey];
 	}
 	return res;
@@ -290,8 +238,7 @@ array<int, 256> Utils::getHistogram1Channel(const Mat& mat, int channel) {
 	array<int, 256> res;
 	fill(res.begin(), res.end(), 0);
 	rep(i, mat.rows) rep(j, mat.cols) {
-		Vec3f rgb = mat.at<Vec3f>(i, j);
-		++res[rgb[channel] * 255.0 + 0.5];
+		++res[mat.at<Vec3b>(i, j)[channel]];
 	}
 	return res;
 }
@@ -300,10 +247,10 @@ array<int, 256> Utils::getHistogram3Channel(const Mat& mat) {
 	array<int, 256> res;
 	fill(res.begin(), res.end(), 0);
 	rep(i, mat.rows) rep(j, mat.cols) {
-		Vec3f rgb = mat.at<Vec3f>(i, j);
-		++res[rgb[0] * 255 + 0.5];
-		++res[rgb[1] * 255 + 0.5];
-		++res[rgb[2] * 255 + 0.5];
+		Vec3b rgb = mat.at<Vec3b>(i, j);
+		++res[rgb[0]];
+		++res[rgb[1]];
+		++res[rgb[2]];
 	}
 	return res;
 }
@@ -311,7 +258,7 @@ array<int, 256> Utils::getHistogram3Channel(const Mat& mat) {
 array<float, 256> Utils::getCDF(const array<int, 256>& hist, int pixels) {
 	array<float, 256> res;
 	array<int, 256> tmp;
-	tmp[0] = hist[0] * 1.0 / pixels;
+	tmp[0] = hist[0];
 	repa(i, 1, 256) {
 		tmp[i] = tmp[i - 1] + hist[i];
 		res[i] = tmp[i] * 1.0 / pixels;
@@ -322,22 +269,22 @@ array<float, 256> Utils::getCDF(const array<int, 256>& hist, int pixels) {
 Mat Utils::linearConvert(const Mat& mat, const list<pair<float, float>>& vertices) {
 	auto cvt = [=](float d){ return (int) (d * 255 + 0.5); };
 
-	array<float, 256> map;
+	array<uchar, 256> map;
 	auto it = vertices.begin();
 	auto nextIt = vertices.begin();
 	++nextIt;
 	rep(i, 256) {
-		if (i > cvt(nextIt->first)) {
+		if (i > nextIt->first) {
 			++it;
 			++nextIt;
 		}
-		map[i] = ((nextIt->second - it->second) * i / 255 + (it->second * nextIt->first - it->first * nextIt->second)) / (nextIt->first - it->first);
+		map[i] = touc(((nextIt->second - it->second) * i + (it->second * nextIt->first - it->first * nextIt->second)) * 1.0 / (nextIt->first - it->first));
 	}
 
-	Mat res(mat.rows, mat.cols, CV_32FC3);
+	Mat res(mat.rows, mat.cols, CV_8UC3);
 	rep(i, mat.rows) rep(j, mat.cols) {
-		Vec3f rgb = mat.at<Vec3f>(i, j);
-		res.at<Vec3f>(i, j) = { map[cvt(rgb[0])], map[cvt(rgb[1])], map[cvt(rgb[2])] };
+		Vec3b rgb = mat.at<Vec3b>(i, j);
+		res.at<Vec3b>(i, j) = { map[rgb[0]], map[rgb[1]], map[rgb[2]] };
 	}
 
 	return res;
@@ -347,10 +294,10 @@ Mat Utils::histogramEqualization(const Mat& mat) {
 	array<int, 256> hist = getHistogram3Channel(mat);
 	array<float, 256> cdf = getCDF(hist, mat.rows * mat.cols * 3);
 
-	Mat res(mat.rows, mat.cols, CV_32FC3);
+	Mat res(mat.rows, mat.cols, CV_8UC3);
 	rep(i, mat.rows) rep(j, mat.cols) {
-		Vec3f rgb = mat.at<Vec3f>(i, j);
-		res.at<Vec3f>(i, j) = { cdf[rgb[0] * 255 + 0.5], cdf[rgb[1] * 255 + 0.5], cdf[rgb[2] * 255 + 0.5] };
+		Vec3b rgb = mat.at<Vec3b>(i, j);
+		res.at<Vec3b>(i, j) = { touc(cdf[rgb[0]] * 255), touc(cdf[rgb[1]] * 255), touc(cdf[rgb[2]] * 255) };
 	}
 
 	return res;
@@ -367,12 +314,12 @@ Mat Utils::histogramSpecificationSML(const Mat& orig, const Mat& pattern) {
 		patternCDF[i] = getCDF(patternHist[i], pattern.rows * pattern.cols);
 	}
 
-	array<array<float, 256>, 3> map;
+	array<array<uchar, 256>, 3> map;
 	rep(k, 3) {
 		int tmpMin = 0, tmpMax = 0;
 		rep(i, 256) {
 			if (origCDF[k][i] <= patternCDF[k][tmpMin]) {
-				map[k][i] = tmpMin * 1.0f / 255;
+				map[k][i] = tmpMin;
 			} else {
 				if (origCDF[k][i] > patternCDF[k][tmpMax]) {
 					while (tmpMax < 256 && origCDF[k][i] > patternCDF[k][tmpMax]) ++tmpMax;
@@ -380,18 +327,18 @@ Mat Utils::histogramSpecificationSML(const Mat& orig, const Mat& pattern) {
 				}
 
 				if (origCDF[k][i] - patternCDF[k][tmpMin] > patternCDF[k][tmpMax] - origCDF[k][i]) {
-					map[k][i] = tmpMax * 1.0f / 255;
+					map[k][i] = tmpMax;
 				} else {
-					map[k][i] = tmpMin * 1.0f / 255;
+					map[k][i] = tmpMin;
 				}
 			}
 		}
 	}
 
-	Mat res(orig.rows, orig.cols, CV_32FC3);
+	Mat res(orig.rows, orig.cols, CV_8UC3);
 	rep(i, orig.rows) rep(j, orig.cols) {
-		Vec3f rgb = orig.at<Vec3f>(i, j);
-		res.at<Vec3f>(i, j) = { map[0][rgb[0] * 255 + 0.5], map[1][rgb[1] * 255 + 0.5], map[2][rgb[2] * 255 + 0.5] };
+		Vec3b rgb = orig.at<Vec3b>(i, j);
+		res.at<Vec3b>(i, j) = { map[0][rgb[0]], map[1][rgb[1]], map[2][rgb[2]] };
 	}
 
 	return res;
@@ -408,8 +355,8 @@ Mat Utils::histogramSpecificationGML(const Mat& orig, const Mat& pattern) {
 		patternCDF[i] = getCDF(patternHist[i], pattern.rows * pattern.cols);
 	}
 
-	array<array<float, 256>, 3> map;
-	array<array<int, 256>, 3> invMap;
+	array<array<uchar, 256>, 3> map;
+	array<array<uchar, 256>, 3> invMap;
 	rep(k, 3) {
 		int tmpMin = 0, tmpMax = 0;
 		rep(i, 256) {
@@ -418,6 +365,9 @@ Mat Utils::histogramSpecificationGML(const Mat& orig, const Mat& pattern) {
 			} else {
 				if (patternCDF[k][i] > origCDF[k][tmpMax]) {
 					while (tmpMax < 256 && patternCDF[k][i] > origCDF[k][tmpMax]) ++tmpMax;
+					if (tmpMax >= 256) {
+						print_debug("pattern : %.10f\torig : %.10f\n", patternCDF[k][i], origCDF[k][255]);
+					}
 					tmpMin = tmpMax - 1;
 				}
 
@@ -433,17 +383,17 @@ Mat Utils::histogramSpecificationGML(const Mat& orig, const Mat& pattern) {
 		rep(i, 256) {
 			if (patternHist[k][i]) {
 				repa(j, tmpMin + 1, invMap[k][i] + 1) {
-					map[k][j] = i * 1.0f / 255;
+					map[k][j] = i;
 				}
 				tmpMin = invMap[k][i];
 			}
 		}
 	}
 
-	Mat res(orig.rows, orig.cols, CV_32FC3);
+	Mat res(orig.rows, orig.cols, CV_8UC3);
 	rep(i, orig.rows) rep(j, orig.cols) {
-		Vec3f rgb = orig.at<Vec3f>(i, j);
-		res.at<Vec3f>(i, j) = { map[0][rgb[0] * 255 + 0.5], map[1][rgb[1] * 255 + 0.5], map[2][rgb[2] * 255 + 0.5] };
+		Vec3b rgb = orig.at<Vec3b>(i, j);
+		res.at<Vec3b>(i, j) = { map[0][rgb[0]], map[1][rgb[1]], map[2][rgb[2]] };
 	}
 
 	return res;
@@ -458,26 +408,25 @@ Mat Utils::medianFilterImageMat(const Mat& mat, int size) {
 
 	int t = (size * size - 1) / 2;
 
-	Mat res(mat.rows - size, mat.cols - size, CV_32FC3);
+	Mat res(mat.rows - size, mat.cols - size, CV_8UC3);
 	rep(k, 3) {
 		rep(i, mat.rows - size) {
 			array<int, 256> hist = getHistogram1Channel(mat(Rect(0, i, size, size)), k);
 			int med = 0, mNum = hist[0];
 
 			while (mNum < t) mNum += hist[++med];
-			res.at<Vec3f>(i, 0)[k] = med * 1.0f / 255;
+			res.at<Vec3b>(i, 0)[k] = med;
 
 			repa(j, 1, mat.cols - size) {
 				repa(m, i, i + size) {
-					int tmp = mat.at<Vec3f>(m, j - 1)[k] * 255.0 + 0.5;
+					int tmp;
+					tmp = mat.at<Vec3b>(m, j - 1)[k];
 					--hist[tmp];
 					if (tmp <= med) {
 						--mNum;
 					}
-				}
 
-				repa(m, i, i + size) {
-					int tmp = mat.at<Vec3f>(m, j + size - 1)[k] * 255.0 + 0.5;
+					tmp = mat.at<Vec3b>(m, j + size - 1)[k];
 					++hist[tmp];
 					if (tmp <= med) {
 						++mNum;
@@ -486,10 +435,10 @@ Mat Utils::medianFilterImageMat(const Mat& mat, int size) {
 
 				if (mNum <= t) {
 					while (mNum < t) mNum += hist[++med];
-					res.at<Vec3f>(i, j)[k] = med * 1.0f / 255;
+					res.at<Vec3b>(i, j)[k] = med;
 				} else {
 					while (mNum > t) mNum -= hist[med--];
-					res.at<Vec3f>(i, j)[k] = med * 1.0f / 255;
+					res.at<Vec3b>(i, j)[k] = med;
 				}
 			}
 		}
@@ -501,16 +450,16 @@ Mat Utils::medianFilterImageMat(const Mat& mat, int size) {
 void Utils::changePartialImageMatLightness(const Mat& mat, Mat& res, vector<float> deltas, int x0, int x1, int y0, int y1) {
 	float delta = deltas[0];
 	repa(i, x0, x1) repa(j, y0, y1) {
-		Vec3f rgb = mat.at<Vec3f>(i, j);
+		Vec3b rgb = mat.at<Vec3b>(i, j);
 		float maxValue, minValue;
 		maxValue = max(rgb[0], max(rgb[1], rgb[2]));
 		minValue = min(rgb[0], min(rgb[1], rgb[2]));
-		float L = (maxValue + minValue) * 1.0 / 2;
+		float L = (maxValue + minValue) * 1.0 / 510;
 		if (delta < 1) {
 			float alpha = L * (1 - delta) / (L * (1 - delta) + delta);
-			res.at<Vec3f>(i, j) = (1 - alpha) * rgb + Vec3f(alpha, alpha, alpha);
+			res.at<Vec3b>(i, j) = { touc((1 - alpha) * rgb[0] + alpha * 255), touc((1 - alpha) * rgb[1] + alpha * 255), touc((1 - alpha) * rgb[2] + alpha * 255) };
 		} else {
-			res.at<Vec3f>(i, j) = rgb / (L * (1 - delta) + delta);
+			res.at<Vec3b>(i, j) = { touc(rgb[0] / (L * (1 - delta) + delta)), touc(rgb[1] / (L * (1 - delta) + delta)), touc(rgb[2] / (L * (1 - delta) + delta)) };
 		}
 	}
 }
@@ -518,25 +467,25 @@ void Utils::changePartialImageMatLightness(const Mat& mat, Mat& res, vector<floa
 void Utils::changePartialImageMatSaturation(const Mat& mat, Mat& res, vector<float> deltas, int x0, int x1, int y0, int y1) {
 	float delta = deltas[0];
 	repa(i, x0, x1) repa(j, y0, y1) {
-		Vec3f rgb = mat.at<Vec3f>(i, j);
+		Vec3b rgb = mat.at<Vec3b>(i, j);
 		float maxValue, minValue;
 		maxValue = max(rgb[0], max(rgb[1], rgb[2]));
 		minValue = min(rgb[0], min(rgb[1], rgb[2]));
 		float L, S;
-		L = (maxValue + minValue) * 1.0 / 2;
-		if (maxValue + minValue < 1) {
+		L = (maxValue + minValue) * 1.0 / 510;
+		if (maxValue + minValue < 255) {
 			S = (maxValue - minValue) * 1.0 / (maxValue + minValue);
 		} else {
-			S = (maxValue - minValue) * 1.0 / (2 - maxValue - minValue);
+			S = (maxValue - minValue) * 1.0 / (510 - maxValue - minValue);
 		}
 
 		float alpha;
 		if (delta > 0) {
 			alpha = 1.0f / max(S, 1 - delta) - 1;
-			res.at<Vec3f>(i, j) = { rgb[0] + (rgb[0] - L) * alpha, rgb[1] + (rgb[1] - L) * alpha, rgb[2] + (rgb[2] - L) * alpha };
+			res.at<Vec3b>(i, j) = { touc(rgb[0] + (rgb[0] - L * 255) * alpha), touc(rgb[1] + (rgb[1] - L * 255) * alpha), touc(rgb[2] + (rgb[2] - L * 255) * alpha) };
 		} else {
 			alpha = delta;
-			res.at<Vec3f>(i, j) = { L + (rgb[0] - L) * (1 + alpha), L + (rgb[1] - L) * (1 + alpha), L + (rgb[2] - L) * (1 + alpha) };
+			res.at<Vec3b>(i, j) = { touc(L * 255 + (rgb[0] - L * 255) * (1 + alpha)), touc(L * 255 + (rgb[1] - L * 255) * (1 + alpha)), touc(L * 255+ (rgb[2] - L * 255) * (1 + alpha)) };
 		}
 	}
 }
@@ -544,7 +493,7 @@ void Utils::changePartialImageMatSaturation(const Mat& mat, Mat& res, vector<flo
 void Utils::changePartialImageMatHue(const Mat& mat, Mat& res, vector<float> deltas, int x0, int x1, int y0, int y1) {
 	float delta = deltas[0];
 	repa(i, x0, x1) repa(j, y0, y1) {
-		Vec3f rgb = mat.at<Vec3f>(i, j);
+		Vec3b rgb = mat.at<Vec3b>(i, j);
 		Vec3f hsl = RGB2HSL(rgb);
 		hsl[0] += delta;
 		if (hsl[0] < 0) {
@@ -552,7 +501,7 @@ void Utils::changePartialImageMatHue(const Mat& mat, Mat& res, vector<float> del
 		} else if (hsl[0] > 360.0) {
 			hsl[0] -= 360.0;
 		}
-		res.at<Vec3f>(i, j) = HSL2RGB(hsl);
+		res.at<Vec3b>(i, j) = HSL2RGB(hsl);
 	}
 }
 
@@ -560,8 +509,15 @@ void Utils::changePartialImageMatGamma(const Mat& mat, Mat& res, vector<float> d
 	float gamma = deltas[0];
 	float c = deltas[1];
 	repa(i, x0, x1) repa(j, y0, y1) {
-		Vec3f rgb = mat.at<Vec3f>(i, j);
-		res.at<Vec3f>(i, j) = { pow(rgb[0], gamma) * c, pow(rgb[1], gamma) * c, pow(rgb[2], gamma) * c };
+		Vec3b rgb = mat.at<Vec3b>(i, j);
+		int tmpB, tmpG, tmpR;
+		tmpB = round(pow(rgb[0] * 1.0 / 255, gamma) * c * 255);
+		tmpG = round(pow(rgb[1] * 1.0 / 255, gamma) * c * 255);
+		tmpR = round(pow(rgb[2] * 1.0 / 255, gamma) * c * 255);
+		updateMinMax(tmpB, 255, 0);
+		updateMinMax(tmpG, 255, 0);
+		updateMinMax(tmpR, 255, 0);
+		res.at<Vec3b>(i, j) = { (uchar) tmpB, (uchar) tmpG, (uchar) tmpR };
 	}
 }
 
@@ -570,12 +526,15 @@ void Utils::changePartialImageMatLog(const Mat& mat, Mat& res, vector<float> del
 	float b = deltas[1];
 	float c = deltas[2];
 	repa(i, x0, x1) repa(j, y0, y1) {
-		Vec3f rgb = mat.at<Vec3f>(i, j);
-		Vec3f tmp;
-		tmp[0] = a + log(rgb[0] + 1) / (b * log(c));
-		tmp[1] = a + log(rgb[1] + 1) / (b * log(c));
-		tmp[2] = a + log(rgb[2] + 1) / (b * log(c));
-		res.at<Vec3f>(i, j) = tmp;
+		Vec3b rgb = mat.at<Vec3b>(i, j);
+		int tmpB, tmpG, tmpR;
+		tmpB = round((a + log(rgb[0] * 1.0 / 255 + 1) / (b * log(c))) * 255);
+		tmpG = round((a + log(rgb[1] * 1.0 / 255 + 1) / (b * log(c))) * 255);
+		tmpR = round((a + log(rgb[2] * 1.0 / 255 + 1) / (b * log(c))) * 255);
+		updateMinMax(tmpB, 255, 0);
+		updateMinMax(tmpG, 255, 0);
+		updateMinMax(tmpR, 255, 0);
+		res.at<Vec3b>(i, j) = { (uchar) tmpB, (uchar) tmpG, (uchar) tmpR };
 	}
 }
 
@@ -584,11 +543,14 @@ void Utils::changePartialImageMatPow(const Mat& mat, Mat& res, vector<float> del
 	float b = deltas[1];
 	float c = deltas[2];
 	repa(i, x0, x1) repa(j, y0, y1) {
-		Vec3f rgb = mat.at<Vec3f>(i, j);
-		Vec3f tmp;
-		tmp[0] = pow(b, c * (rgb[0] - a)) - 1;
-		tmp[1] = pow(b, c * (rgb[1] - a)) - 1;
-		tmp[2] = pow(b, c * (rgb[2] - a)) - 1;
-		res.at<Vec3f>(i, j) = tmp;
+		Vec3b rgb = mat.at<Vec3b>(i, j);
+		int tmpB, tmpG, tmpR;
+		tmpB = round((pow(b, c * (rgb[0] * 1.0 / 255 - a)) - 1) * 255);
+		tmpG = round((pow(b, c * (rgb[1] * 1.0 / 255 - a)) - 1) * 255);
+		tmpR = round((pow(b, c * (rgb[2] * 1.0 / 255 - a)) - 1) * 255);
+		updateMinMax(tmpB, 255, 0);
+		updateMinMax(tmpG, 255, 0);
+		updateMinMax(tmpR, 255, 0);
+		res.at<Vec3b>(i, j) = { (uchar) tmpB, (uchar) tmpG, (uchar) tmpR };
 	}
 }

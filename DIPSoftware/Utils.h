@@ -23,6 +23,8 @@
 #define repa(x, y, z) for (decltype(z) x{y}; x < (z); ++x)
 #define repd(x, y, z) for (decltype(z) x{y}; x >= (z); --x)
 
+#define touc(x) (uchar) round(x)
+
 #define QSL(x) QStringLiteral(x)
 
 template<typename T>
@@ -57,16 +59,12 @@ public:
 	static void c_fprintf(const char *color, FILE *fp, const char *format, ...);
 
 	static QString getExtension(const cv::String& str);
-	static void getSequence(const cv::Vec3f& vec, float &max, float &mid, float &min);
 
-	static cv::Mat mat8U2Mat32F(const cv::Mat& mat8U);
-	static cv::Mat mat32F2Mat8U(const cv::Mat& mat32F);
 	static QImage mat2QImage(const cv::Mat& mat);
-	static cv::Vec3f biLinearInterpolation(const cv::Mat& mat, float x, float y);
-	static cv::Vec3f RGB2HSL(cv::Vec3f rgb);
-	static cv::Vec3f HSL2RGB(cv::Vec3f hsl);
+	static cv::Vec3b biLinearInterpolation(const cv::Mat& mat, float x, float y);
+	static cv::Vec3f RGB2HSL(cv::Vec3b rgb);
+	static cv::Vec3b HSL2RGB(cv::Vec3f hsl);
 
-	static cv::Mat updateImageMat(const cv::Mat& mat);
 	static cv::Mat rotateImageMat(const cv::Mat& mat, float theta);
 	static cv::Mat changeImageMat(const cv::Mat& mat, std::vector<float> delta, changeFuncType changeFunc);
 

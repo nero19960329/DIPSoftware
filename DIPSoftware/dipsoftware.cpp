@@ -173,19 +173,19 @@ void DIPSoftware::openFile() {
 	}
 	currentFileName = String((const char *) inputFileName.toLocal8Bit());
 	Mat imageMat = imread(currentFileName);
-	imgWidget->setImageMat(Utils::mat8U2Mat32F(imageMat));
-	histogramWidget->setImageMat(Utils::mat8U2Mat32F(imageMat));
+	imgWidget->setImageMat(imageMat);
+	histogramWidget->setImageMat(imageMat);
 	setActionsEnabled(true);
 }
 
 void DIPSoftware::saveFile() {
-	imwrite(currentFileName, Utils::mat32F2Mat8U(*(imgWidget->imgMat)));
+	imwrite(currentFileName, *(imgWidget->imgMat));
 }
 
 void DIPSoftware::saveAsFile() {
 	QString inputFileName = QFileDialog::getSaveFileName(this, QSL("另存为"), "", QSL("位图文件(*.bmp);;PNG文件(*.png);;JPEG文件(*.jpg;*.jpeg)"));
 	currentFileName = String((const char *) inputFileName.toLocal8Bit());
-	imwrite(currentFileName, Utils::mat32F2Mat8U(*(imgWidget->imgMat)));
+	imwrite(currentFileName, *(imgWidget->imgMat));
 }
 
 void DIPSoftware::cropImage() {
@@ -208,7 +208,7 @@ void DIPSoftware::rotateImageAnyAngle() {
 }
 
 void DIPSoftware::horizontalFlipImage() {
-	Mat image = Mat(imgWidget->imgMat->rows, imgWidget->imgMat->cols, CV_32FC3);
+	Mat image = Mat(imgWidget->imgMat->rows, imgWidget->imgMat->cols, CV_8UC3);
 	rep(j, image.cols) {
 		imgWidget->imgMat->col(image.cols - j - 1).copyTo(image.col(j));
 	}
@@ -217,7 +217,7 @@ void DIPSoftware::horizontalFlipImage() {
 }
 
 void DIPSoftware::verticalFlipImage() {
-	Mat image = Mat(imgWidget->imgMat->rows, imgWidget->imgMat->cols, CV_32FC3);
+	Mat image = Mat(imgWidget->imgMat->rows, imgWidget->imgMat->cols, CV_8UC3);
 	rep(i, image.rows) {
 		imgWidget->imgMat->row(image.rows - i - 1).copyTo(image.row(i));
 	}
@@ -233,9 +233,9 @@ void DIPSoftware::changeImage(function<Mat(vector<float>)> lambdaFunc, function<
 	if (!ok) {
 		imgWidget->setImageMat(*originMat);
 	} else if (deltas.size()) {
-		undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *originMat, Utils::updateImageMat(lambdaFunc(deltas))));
+		undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *originMat, lambdaFunc(deltas)));
 	} else {
-		undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *originMat, Utils::updateImageMat(*imgWidget->imgMat)));
+		undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *originMat, *imgWidget->imgMat));
 	}
 }
 
@@ -268,9 +268,9 @@ void DIPSoftware::histSpecSMLImage() {
 	if (!inputFileName.size()) {
 		return;
 	}
-	Mat patternMat = Utils::mat8U2Mat32F(imread(String((const char *) inputFileName.toLocal8Bit())));
+	Mat patternMat = imread(String((const char *) inputFileName.toLocal8Bit()));
 	Mat image = Utils::histogramSpecificationSML(*imgWidget->imgMat, patternMat);
-	undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *imgWidget->imgMat, Utils::updateImageMat(image)));
+	undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *imgWidget->imgMat, image));
 }
 
 void DIPSoftware::histSpecGMLImage() {
@@ -278,9 +278,9 @@ void DIPSoftware::histSpecGMLImage() {
 	if (!inputFileName.size()) {
 		return;
 	}
-	Mat patternMat = Utils::mat8U2Mat32F(imread(String((const char *) inputFileName.toLocal8Bit())));
+	Mat patternMat = imread(String((const char *) inputFileName.toLocal8Bit()));
 	Mat image = Utils::histogramSpecificationGML(*imgWidget->imgMat, patternMat);
-	undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *imgWidget->imgMat, Utils::updateImageMat(image)));
+	undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *imgWidget->imgMat, image));
 }
 
 void DIPSoftware::medianFilterImage() {
