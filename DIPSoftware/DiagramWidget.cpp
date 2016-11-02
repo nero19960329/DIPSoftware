@@ -66,21 +66,10 @@ void DiagramWidget::mouseMoveEvent(QMouseEvent *event) {
 	if (isPressed) {
 		pair<float, float> pos = point2Pair(event->pos());
 
-		if (vertexIt->first >= 1.0f - 1e-3) {
+		if (vertexIt->first >= 1.0f - FLT_EPSILON || vertexIt->first <= FLT_EPSILON) {
 			vertexIt->second = pos.second;
 		} else {
-			auto lastIt = vertices.begin();
-			if (vertexIt != vertices.begin()) {
-				lastIt = --vertexIt;
-				++vertexIt;
-			}
-
-			if (pos.first < lastIt->first + 1e-2) {
-				vertexIt->first = lastIt->first + 1e-2;
-				vertexIt->second = pos.second;
-			} else {
-				*vertexIt = pos;
-			}
+			*vertexIt = pos;
 		}
 
 		emit(valueChanged(vertices));

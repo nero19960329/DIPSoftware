@@ -160,7 +160,7 @@ vector<float> InputPreviewDialog::changeFloat(QWidget *parent, ImgWidget *widget
 		for (const auto &slider : dialog.sliders) {
 			res.push_back(slider->value());
 		}
-		return std::move(res);
+		return res;
 	} else {
 		return {};
 	}

@@ -18,7 +18,7 @@
 #define COLOR_CYAN		"\x1B[36m"
 #define COLOR_RESET		"\x1B[0m"
 
-#define betw(x, y, z) ((x) > (y) && (x) < (z))
+#define betw(x, y, z) ((x) >= (y) && (x) < (z))
 #define rep(x, y) for (decltype(y) x{0}; x < (y); ++x)
 #define repa(x, y, z) for (decltype(z) x{y}; x < (z); ++x)
 #define repd(x, y, z) for (decltype(z) x{y}; x >= (z); --x)
@@ -28,6 +28,22 @@
 template<typename T>
 inline void updateMax(T& value, const T& max) {
 	if (value < max) {
+		value = max;
+	}
+}
+
+template<typename T>
+inline void updateMin(T& value, const T& min) {
+	if (value > min) {
+		value = min;
+	}
+}
+
+template<typename T>
+inline void updateMinMax(T& value, const T& min, const T& max) {
+	if (value > min) {
+		value = min;
+	} else if (value < max) {
 		value = max;
 	}
 }
@@ -49,6 +65,8 @@ public:
 	static cv::Vec3f biLinearInterpolation(const cv::Mat& mat, float x, float y);
 	static cv::Vec3f RGB2HSL(cv::Vec3f rgb);
 	static cv::Vec3f HSL2RGB(cv::Vec3f hsl);
+
+	static cv::Mat updateImageMat(const cv::Mat& mat);
 	static cv::Mat rotateImageMat(const cv::Mat& mat, float theta);
 	static cv::Mat changeImageMat(const cv::Mat& mat, std::vector<float> delta, changeFuncType changeFunc);
 

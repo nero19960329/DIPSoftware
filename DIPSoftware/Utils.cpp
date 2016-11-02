@@ -216,6 +216,17 @@ Vec3f Utils::HSL2RGB(Vec3f hsl) {
 	return { rgb[2], rgb[1], rgb[0] };
 }
 
+Mat Utils::updateImageMat(const Mat& mat) {
+	Mat res(mat);
+	rep(i, res.rows) rep(j, res.cols) {
+		Vec3f &rgb = res.at<Vec3f>(i, j);
+		updateMinMax(rgb[0], 1.0f, 0.0f);
+		updateMinMax(rgb[1], 1.0f, 0.0f);
+		updateMinMax(rgb[2], 1.0f, 0.0f);
+	}
+	return res;
+}
+
 Mat Utils::rotateImageMat(const Mat& mat, float theta) {
 	int newW, newH;
 	int w, h;
@@ -298,9 +309,11 @@ array<int, 256> Utils::getHistogram3Channel(const Mat& mat) {
 
 array<float, 256> Utils::getCDF(const array<int, 256>& hist, int pixels) {
 	array<float, 256> res;
-	res[0] = hist[0] * 1.0 / pixels;
+	array<int, 256> tmp;
+	tmp[0] = hist[0] * 1.0 / pixels;
 	repa(i, 1, 256) {
-		res[i] = res[i - 1] + hist[i] * 1.0 / pixels;
+		tmp[i] = tmp[i - 1] + hist[i];
+		res[i] = tmp[i] * 1.0 / pixels;
 	}
 	return res;
 }

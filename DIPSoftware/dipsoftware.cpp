@@ -226,10 +226,10 @@ void DIPSoftware::changeImage(function<Mat(vector<float>)> lambdaFunc, function<
 	vector<float> deltas = changeFunc(lambdaFunc, ok);
 	if (!ok) {
 		imgWidget->setImageMat(*originMat);
-	} else if (deltas != vector<float>{}) {
-		undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *originMat, lambdaFunc(deltas)));
+	} else if (deltas.size()) {
+		undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *originMat, Utils::updateImageMat(lambdaFunc(deltas))));
 	} else {
-		undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *originMat, *imgWidget->imgMat));
+		undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *originMat, Utils::updateImageMat(*imgWidget->imgMat)));
 	}
 }
 
