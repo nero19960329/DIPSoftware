@@ -280,6 +280,7 @@ array<int, 256> Utils::getHistogram(const Mat& mat) {
 	rep(i, mat.rows) rep(j, mat.cols) {
 		Vec3f rgb = mat.at<Vec3f>(i, j);
 		unsigned int grey = (rgb[0] + rgb[1] + rgb[2]) * 85.0 + 0.5;
+		updateMinMax(grey, (unsigned int) 255, (unsigned int) 0);
 		++res[grey];
 	}
 	return res;
