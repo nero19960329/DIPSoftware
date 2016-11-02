@@ -2,6 +2,7 @@
 #include "DebugUtils.h"
 
 #include <future>
+#include <numeric>
 
 #include <QDebug>
 
@@ -280,7 +281,6 @@ array<int, 256> Utils::getHistogram(const Mat& mat) {
 	rep(i, mat.rows) rep(j, mat.cols) {
 		Vec3f rgb = mat.at<Vec3f>(i, j);
 		unsigned int grey = (rgb[0] + rgb[1] + rgb[2]) * 85.0 + 0.5;
-		updateMinMax(grey, (unsigned int) 255, (unsigned int) 0);
 		++res[grey];
 	}
 	return res;
@@ -291,7 +291,7 @@ array<int, 256> Utils::getHistogram1Channel(const Mat& mat, int channel) {
 	fill(res.begin(), res.end(), 0);
 	rep(i, mat.rows) rep(j, mat.cols) {
 		Vec3f rgb = mat.at<Vec3f>(i, j);
-		++res[rgb[channel] * 255 + 0.5];
+		++res[rgb[channel] * 255.0 + 0.5];
 	}
 	return res;
 }
@@ -444,6 +444,55 @@ Mat Utils::histogramSpecificationGML(const Mat& orig, const Mat& pattern) {
 	rep(i, orig.rows) rep(j, orig.cols) {
 		Vec3f rgb = orig.at<Vec3f>(i, j);
 		res.at<Vec3f>(i, j) = { map[0][rgb[0] * 255 + 0.5], map[1][rgb[1] * 255 + 0.5], map[2][rgb[2] * 255 + 0.5] };
+	}
+
+	return res;
+}
+
+Mat Utils::medianFilterImageMat(const Mat& mat, int size) {
+	if (size < 3) {
+		return mat;
+	} else if (!(size % 2)) {
+		--size;
+	}
+
+	int t = (size * size - 1) / 2;
+
+	Mat res(mat.rows - size, mat.cols - size, CV_32FC3);
+	rep(k, 3) {
+		rep(i, mat.rows - size) {
+			array<int, 256> hist = getHistogram1Channel(mat(Rect(0, i, size, size)), k);
+			int med = 0, mNum = hist[0];
+
+			while (mNum < t) mNum += hist[++med];
+			res.at<Vec3f>(i, 0)[k] = med * 1.0f / 255;
+
+			repa(j, 1, mat.cols - size) {
+				repa(m, i, i + size) {
+					int tmp = mat.at<Vec3f>(m, j - 1)[k] * 255.0 + 0.5;
+					--hist[tmp];
+					if (tmp <= med) {
+						--mNum;
+					}
+				}
+
+				repa(m, i, i + size) {
+					int tmp = mat.at<Vec3f>(m, j + size - 1)[k] * 255.0 + 0.5;
+					++hist[tmp];
+					if (tmp <= med) {
+						++mNum;
+					}
+				}
+
+				if (mNum <= t) {
+					while (mNum < t) mNum += hist[++med];
+					res.at<Vec3f>(i, j)[k] = med * 1.0f / 255;
+				} else {
+					while (mNum > t) mNum -= hist[med--];
+					res.at<Vec3f>(i, j)[k] = med * 1.0f / 255;
+				}
+			}
+		}
 	}
 
 	return res;

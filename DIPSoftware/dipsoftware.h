@@ -42,6 +42,7 @@ private:
 	void histEquImage();
 	void histSpecSMLImage();
 	void histSpecGMLImage();
+	void medianFilterImage();
 
 	void setActionsEnabled(bool enabled);
 
@@ -77,6 +78,8 @@ private:
 	QAction *histEquAction;
 	QAction *histSpecSMLAction;
 	QAction *histSpecGMLAction;
+
+	QAction *medianFilterAction;
 
 	std::shared_ptr<std::vector<QAction*>> actionObservers;
 

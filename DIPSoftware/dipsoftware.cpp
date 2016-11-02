@@ -59,6 +59,7 @@ DIPSoftware::DIPSoftware(QWidget *parent) : QMainWindow(parent) {
 	histEquAction = new QAction(QSL("&直方图均衡化"), this);
 	histSpecSMLAction = new QAction(QSL("&单映射规则"), this);
 	histSpecGMLAction = new QAction(QSL("&组映射规则"), this);
+	medianFilterAction = new QAction(QSL("&中值滤波"), this);
 
 	actionObservers = make_shared<vector<QAction*>>(initializer_list<QAction*>{
 		saveFileAction, saveAsFileAction, rotate90Action,
@@ -66,7 +67,8 @@ DIPSoftware::DIPSoftware(QWidget *parent) : QMainWindow(parent) {
 		horizontalFlipAction, verticalFlipAction, changeLightnessAction,
 		changeSaturationAction, changeHueAction, linearConvertAction,
 		changeGammaAction, changeLogAction, changePowAction,
-		histEquAction, histSpecSMLAction, histSpecGMLAction
+		histEquAction, histSpecSMLAction, histSpecGMLAction,
+		medianFilterAction
 	});
 
 	QMenu *fileMenu = menuBar()->addMenu(QSL("&文件"));
@@ -101,6 +103,9 @@ DIPSoftware::DIPSoftware(QWidget *parent) : QMainWindow(parent) {
 	QMenu *histSpecMenu = imageMenu->addMenu(QSL("&直方图规定化"));
 	histSpecMenu->addAction(histSpecSMLAction);
 	histSpecMenu->addAction(histSpecGMLAction);
+	imageMenu->addSeparator();
+	QMenu *spaceFilterMenu = imageMenu->addMenu(QSL("&空域滤波器"));
+	spaceFilterMenu->addAction(medianFilterAction);
 
 	connect(imgWidget, &ImgWidget::setCropActionEnabled, this, bind(&QAction::setEnabled, cropAction, placeholders::_1));
 	connect(openFileAction, &QAction::triggered, this, &DIPSoftware::openFile);
@@ -140,6 +145,7 @@ DIPSoftware::DIPSoftware(QWidget *parent) : QMainWindow(parent) {
 	connect(histEquAction, &QAction::triggered, this, &DIPSoftware::histEquImage);
 	connect(histSpecSMLAction, &QAction::triggered, this, &DIPSoftware::histSpecSMLImage);
 	connect(histSpecGMLAction, &QAction::triggered, this, &DIPSoftware::histSpecGMLImage);
+	connect(medianFilterAction, &QAction::triggered, this, &DIPSoftware::medianFilterImage);
 
 	//diagramWidget->setFixedSize(400, 300);
 	histogramWidget->setFixedSize(400, 300);
@@ -264,7 +270,7 @@ void DIPSoftware::histSpecSMLImage() {
 	}
 	Mat patternMat = Utils::mat8U2Mat32F(imread(String((const char *) inputFileName.toLocal8Bit())));
 	Mat image = Utils::histogramSpecificationSML(*imgWidget->imgMat, patternMat);
-	undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *imgWidget->imgMat, image));
+	undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *imgWidget->imgMat, Utils::updateImageMat(image)));
 }
 
 void DIPSoftware::histSpecGMLImage() {
@@ -274,7 +280,20 @@ void DIPSoftware::histSpecGMLImage() {
 	}
 	Mat patternMat = Utils::mat8U2Mat32F(imread(String((const char *) inputFileName.toLocal8Bit())));
 	Mat image = Utils::histogramSpecificationGML(*imgWidget->imgMat, patternMat);
-	undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *imgWidget->imgMat, image));
+	undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *imgWidget->imgMat, Utils::updateImageMat(image)));
+}
+
+void DIPSoftware::medianFilterImage() {
+	setOriginMat();
+
+	bool ok;
+	int maxKernel = min(imgWidget->imgMat->rows, imgWidget->imgMat->cols);
+	maxKernel = (maxKernel / 2) * 2 - 1;
+	int size = QInputDialog::getInt(this, QSL("中值滤波"), QSL("卷积核大小"), 3, 3, maxKernel, 2, &ok);
+	if (ok) {
+		Mat image = Utils::medianFilterImageMat(*imgWidget->imgMat, size);
+		undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *imgWidget->imgMat, image));
+	}
 }
 
 void DIPSoftware::setActionsEnabled(bool enabled) {

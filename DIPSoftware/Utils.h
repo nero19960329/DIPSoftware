@@ -80,6 +80,8 @@ public:
 	static cv::Mat histogramSpecificationSML(const cv::Mat& orig, const cv::Mat& pattern);
 	static cv::Mat histogramSpecificationGML(const cv::Mat& orig, const cv::Mat& pattern);
 
+	static cv::Mat medianFilterImageMat(const cv::Mat& mat, int size);
+
 	static void changePartialImageMatLightness(const cv::Mat& mat, cv::Mat& res, std::vector<float> deltas, int x0, int x1, int y0, int y1);
 	static void changePartialImageMatSaturation(const cv::Mat& mat, cv::Mat& res, std::vector<float> deltas, int x0, int x1, int y0, int y1);
 	static void changePartialImageMatHue(const cv::Mat& mat, cv::Mat& res, std::vector<float> deltas, int x0, int x1, int y0, int y1);
