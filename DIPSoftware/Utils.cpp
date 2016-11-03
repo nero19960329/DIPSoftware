@@ -6,6 +6,7 @@
 
 #include <QDebug>
 
+#define PI 3.141592653589793
 #define EPSILON 1e-3
 
 using namespace cv;
@@ -439,6 +440,152 @@ Mat Utils::medianFilterImageMat(const Mat& mat, int size) {
 				}
 			}
 		}
+	}
+
+	return res;
+}
+
+vector<float> Utils::getGaussianKernel1D(int size, float sigma) {
+	vector<float> res;
+
+	int mid = (size - 1) / 2;
+	rep(i, size) {
+		float tmp = exp(-sqr(i - mid) / (2 * sqr(sigma))) / (sqrt(2 * PI) * sigma);
+		res.push_back(tmp);
+	}
+
+	float sum = accumulate(res.begin(), res.end(), 0.0);
+	for (auto &elem : res) {
+		elem /= sum;
+	}
+
+	return res;
+}
+
+Mat Utils::gaussianFilterImageMat(const Mat& mat, int size, float sigma) {
+	vector<float> kernel1D = getGaussianKernel1D(size, sigma);
+
+	Mat tmpMat(mat.rows - size, mat.cols, CV_32FC3);
+	Mat res(mat.rows - size, mat.cols - size, CV_8UC3);
+	rep(i, mat.rows - size) rep(j, mat.cols) {
+		Vec3f tmp{ 0.0, 0.0, 0.0 };
+		rep(k, size) {
+			Vec3b rgb = mat.at<Vec3b>(i + k, j);
+			tmp[0] += kernel1D[k] * rgb[0];
+			tmp[1] += kernel1D[k] * rgb[1];
+			tmp[2] += kernel1D[k] * rgb[2];
+		}
+		tmpMat.at<Vec3f>(i, j) = tmp;
+	}
+
+	rep(i, mat.rows - size) rep(j, mat.cols - size) {
+		Vec3f tmp{ 0.0, 0.0, 0.0 };
+		rep(k, size) {
+			Vec3f rgb = tmpMat.at<Vec3f>(i, j + k);
+			tmp[0] += kernel1D[k] * rgb[0];
+			tmp[1] += kernel1D[k] * rgb[1];
+			tmp[2] += kernel1D[k] * rgb[2];
+		}
+		res.at<Vec3b>(i, j) = { touc(tmp[0]), touc(tmp[1]), touc(tmp[2]) };
+	}
+
+	return res;
+}
+
+Mat Utils::getRobertFilterImageMat(const Mat& mat) {
+	Mat res = Mat::zeros(mat.rows, mat.cols, CV_8UC3);
+
+	repa(i, 1, mat.rows - 1) repa(j, 1, mat.cols - 1) {
+		Mat crop = mat(Rect(j, i, 2, 2));
+		Vec3i tmp;
+		rep(k, 3) {
+			tmp[k] = abs(crop.at<Vec3b>(0, 0)[k] - crop.at<Vec3b>(1, 1)[k]) +
+				abs(crop.at<Vec3b>(0, 1)[k] - crop.at<Vec3b>(1, 0)[k]);
+			updateMinMax(tmp[k], 255, 0);
+		}
+		res.at<Vec3b>(i, j) = { (uchar) tmp[0], (uchar) tmp[1], (uchar) tmp[2] };
+	}
+
+	return res;
+}
+
+Mat Utils::getPrewittFilterImageMat(const Mat& mat) {
+	Mat res = Mat::zeros(mat.rows, mat.cols, CV_8UC3);
+
+	repa(i, 1, mat.rows - 1) repa(j, 1, mat.cols - 1) {
+		Mat crop = mat(Rect(j - 1, i - 1, 3, 3));
+		Vec3i tmp;
+		rep(k, 3) {
+			tmp[k] = abs(crop.at<Vec3b>(0, 2)[k] + crop.at<Vec3b>(1, 2)[k] + crop.at<Vec3b>(2, 2)[k] - crop.at<Vec3b>(0, 0)[k] - crop.at<Vec3b>(1, 0)[k] - crop.at<Vec3b>(2, 0)[k]) +
+				abs(crop.at<Vec3b>(2, 0)[k] + crop.at<Vec3b>(2, 1)[k] + crop.at<Vec3b>(2, 2)[k] - crop.at<Vec3b>(0, 0)[k] - crop.at<Vec3b>(0, 1)[k] - crop.at<Vec3b>(0, 2)[k]);
+			updateMinMax(tmp[k], 255, 0);
+		}
+		res.at<Vec3b>(i, j) = { (uchar) tmp[0], (uchar) tmp[1], (uchar) tmp[2] };
+	}
+
+	return res;
+}
+
+Mat Utils::getSobelFilterImageMat(const Mat& mat) {
+	Mat res = Mat::zeros(mat.rows, mat.cols, CV_8UC3);
+
+	repa(i, 1, mat.rows - 1) repa(j, 1, mat.cols - 1) {
+		Mat crop = mat(Rect(j - 1, i - 1, 3, 3));
+		Vec3i tmp;
+		rep(k, 3) {
+			tmp[k] = abs(crop.at<Vec3b>(0, 2)[k] + 2 * crop.at<Vec3b>(1, 2)[k] + crop.at<Vec3b>(2, 2)[k] - crop.at<Vec3b>(0, 0)[k] - 2 * crop.at<Vec3b>(1, 0)[k] - crop.at<Vec3b>(2, 0)[k]) +
+				abs(crop.at<Vec3b>(2, 0)[k] + 2 * crop.at<Vec3b>(2, 1)[k] + crop.at<Vec3b>(2, 2)[k] - crop.at<Vec3b>(0, 0)[k] - 2 * crop.at<Vec3b>(0, 1)[k] - crop.at<Vec3b>(0, 2)[k]);
+			updateMinMax(tmp[k], 255, 0);
+		}
+		res.at<Vec3b>(i, j) = { (uchar) tmp[0], (uchar) tmp[1], (uchar) tmp[2] };
+	}
+
+	return res;
+}
+
+Mat Utils::getLaplaceFilterImageMat(const Mat& mat) {
+	Mat res = Mat::zeros(mat.rows, mat.cols, CV_8UC3);
+
+	repa(i, 1, mat.rows - 1) repa(j, 1, mat.cols - 1) {
+		Mat crop = mat(Rect(j - 1, i - 1, 3, 3));
+		Vec3i tmp;
+		rep(k, 3) {
+			tmp[k] = abs(crop.at<Vec3b>(1, 1)[k] * 8 - crop.at<Vec3b>(0, 0)[k] - crop.at<Vec3b>(0, 1)[k] - crop.at<Vec3b>(0, 2)[k] - crop.at<Vec3b>(1, 0)[k] - crop.at<Vec3b>(1, 2)[k] - crop.at<Vec3b>(2, 0)[k] - crop.at<Vec3b>(2, 1)[k] - crop.at<Vec3b>(2, 2)[k]);
+			updateMinMax(tmp[k], 255, 0);
+		}
+		res.at<Vec3b>(i, j) = { (uchar) tmp[0], (uchar) tmp[1], (uchar) tmp[2] };
+	}
+
+	return res;
+}
+
+Mat Utils::sharpenImageMat(const Mat& mat, int type) {
+	Mat res(mat.rows, mat.cols, CV_8UC3);
+	Mat grad;
+
+	float t = 0.1;
+
+	if (type == 0) {
+		t = 0.2;
+		grad = getRobertFilterImageMat(mat);
+	} else if (type == 1) {
+		grad = getPrewittFilterImageMat(mat);
+	} else if (type == 2) {
+		grad = getSobelFilterImageMat(mat);
+	} else if (type == 3) {
+		t = 0.2;
+		grad = getLaplaceFilterImageMat(mat);
+	} else {
+		return res;
+	}
+
+	rep(i, res.rows) rep(j, res.cols) {
+		Vec3i tmp;
+		rep(k, 3) {
+			tmp[k] = round(mat.at<Vec3b>(i, j)[k] + t * grad.at<Vec3b>(i, j)[k]);
+			updateMinMax(tmp[k], 255, 0);
+		}
+		res.at<Vec3b>(i, j) = { (uchar) tmp[0], (uchar) tmp[1], (uchar) tmp[2] };
 	}
 
 	return res;

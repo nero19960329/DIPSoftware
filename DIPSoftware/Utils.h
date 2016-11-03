@@ -50,6 +50,20 @@ inline void updateMinMax(T& value, const T& min, const T& max) {
 	}
 }
 
+template<typename T>
+inline T sqr(const T &value) {
+	return value * value;
+}
+
+template<typename T, int cn>
+cv::Vec<T, cn> abs(const cv::Vec<T, cn> &v) {
+	cv::Vec<T, cn> res(v);
+	rep(i, cn) {
+		res[i] = abs(res[i]);
+	}
+	return res;
+}
+
 class Utils {
 public:
 	using changeFuncType = std::function<void(const cv::Mat &, cv::Mat &, std::vector<float>, int, int, int, int)>;
@@ -79,6 +93,8 @@ public:
 	static cv::Mat histogramSpecificationGML(const cv::Mat& orig, const cv::Mat& pattern);
 
 	static cv::Mat medianFilterImageMat(const cv::Mat& mat, int size);
+	static cv::Mat gaussianFilterImageMat(const cv::Mat& mat, int size, float sigma);
+	static cv::Mat sharpenImageMat(const cv::Mat& mat, int type);
 
 	static void changePartialImageMatLightness(const cv::Mat& mat, cv::Mat& res, std::vector<float> deltas, int x0, int x1, int y0, int y1);
 	static void changePartialImageMatSaturation(const cv::Mat& mat, cv::Mat& res, std::vector<float> deltas, int x0, int x1, int y0, int y1);
@@ -86,4 +102,12 @@ public:
 	static void changePartialImageMatGamma(const cv::Mat& mat, cv::Mat& res, std::vector<float> deltas, int x0, int x1, int y0, int y1);
 	static void changePartialImageMatLog(const cv::Mat& mat, cv::Mat& res, std::vector<float> deltas, int x0, int x1, int y0, int y1);
 	static void changePartialImageMatPow(const cv::Mat& mat, cv::Mat& res, std::vector<float> deltas, int x0, int x1, int y0, int y1);
+
+private:
+	static std::vector<float> getGaussianKernel1D(int size, float sigma);
+
+	static cv::Mat getRobertFilterImageMat(const cv::Mat& mat);
+	static cv::Mat getPrewittFilterImageMat(const cv::Mat& mat);
+	static cv::Mat getSobelFilterImageMat(const cv::Mat& mat);
+	static cv::Mat getLaplaceFilterImageMat(const cv::Mat& mat);
 };

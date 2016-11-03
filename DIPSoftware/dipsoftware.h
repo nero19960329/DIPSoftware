@@ -43,6 +43,8 @@ private:
 	void histSpecSMLImage();
 	void histSpecGMLImage();
 	void medianFilterImage();
+	void gaussianFilterImage();
+	void sharpenImage(int type);
 
 	void setActionsEnabled(bool enabled);
 
@@ -80,6 +82,11 @@ private:
 	QAction *histSpecGMLAction;
 
 	QAction *medianFilterAction;
+	QAction *gaussianFilterAction;
+	QAction *sharpenRobertFilterAction;
+	QAction *sharpenPrewittFilterAction;
+	QAction *sharpenSobelFilterAction;
+	QAction *sharpenLaplaceFilterAction;
 
 	std::shared_ptr<std::vector<QAction*>> actionObservers;
 

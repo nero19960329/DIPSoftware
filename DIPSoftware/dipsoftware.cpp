@@ -60,6 +60,11 @@ DIPSoftware::DIPSoftware(QWidget *parent) : QMainWindow(parent) {
 	histSpecSMLAction = new QAction(QSL("&单映射规则"), this);
 	histSpecGMLAction = new QAction(QSL("&组映射规则"), this);
 	medianFilterAction = new QAction(QSL("&中值滤波"), this);
+	gaussianFilterAction = new QAction(QSL("&高斯滤波"), this);
+	sharpenRobertFilterAction = new QAction(QSL("&Robert交叉算子"), this);
+	sharpenPrewittFilterAction = new QAction(QSL("&Prewitt算子"), this);
+	sharpenSobelFilterAction = new QAction(QSL("&Sobel算子"), this);
+	sharpenLaplaceFilterAction = new QAction(QSL("&Laplace算子"), this);
 
 	actionObservers = make_shared<vector<QAction*>>(initializer_list<QAction*>{
 		saveFileAction, saveAsFileAction, rotate90Action,
@@ -68,7 +73,8 @@ DIPSoftware::DIPSoftware(QWidget *parent) : QMainWindow(parent) {
 		changeSaturationAction, changeHueAction, linearConvertAction,
 		changeGammaAction, changeLogAction, changePowAction,
 		histEquAction, histSpecSMLAction, histSpecGMLAction,
-		medianFilterAction
+		medianFilterAction, gaussianFilterAction, sharpenRobertFilterAction,
+		sharpenPrewittFilterAction, sharpenSobelFilterAction, sharpenLaplaceFilterAction
 	});
 
 	QMenu *fileMenu = menuBar()->addMenu(QSL("&文件"));
@@ -106,6 +112,12 @@ DIPSoftware::DIPSoftware(QWidget *parent) : QMainWindow(parent) {
 	imageMenu->addSeparator();
 	QMenu *spaceFilterMenu = imageMenu->addMenu(QSL("&空域滤波器"));
 	spaceFilterMenu->addAction(medianFilterAction);
+	spaceFilterMenu->addAction(gaussianFilterAction);
+	QMenu *sharpenMenu = spaceFilterMenu->addMenu(QSL("&锐化"));
+	sharpenMenu->addAction(sharpenRobertFilterAction);
+	sharpenMenu->addAction(sharpenPrewittFilterAction);
+	sharpenMenu->addAction(sharpenSobelFilterAction);
+	sharpenMenu->addAction(sharpenLaplaceFilterAction);
 
 	connect(imgWidget, &ImgWidget::setCropActionEnabled, this, bind(&QAction::setEnabled, cropAction, placeholders::_1));
 	connect(openFileAction, &QAction::triggered, this, &DIPSoftware::openFile);
@@ -146,6 +158,11 @@ DIPSoftware::DIPSoftware(QWidget *parent) : QMainWindow(parent) {
 	connect(histSpecSMLAction, &QAction::triggered, this, &DIPSoftware::histSpecSMLImage);
 	connect(histSpecGMLAction, &QAction::triggered, this, &DIPSoftware::histSpecGMLImage);
 	connect(medianFilterAction, &QAction::triggered, this, &DIPSoftware::medianFilterImage);
+	connect(gaussianFilterAction, &QAction::triggered, this, &DIPSoftware::gaussianFilterImage);
+	connect(sharpenRobertFilterAction, &QAction::triggered, this, bind(&DIPSoftware::sharpenImage, this, 0));
+	connect(sharpenPrewittFilterAction, &QAction::triggered, this, bind(&DIPSoftware::sharpenImage, this, 1));
+	connect(sharpenSobelFilterAction, &QAction::triggered, this, bind(&DIPSoftware::sharpenImage, this, 2));
+	connect(sharpenLaplaceFilterAction, &QAction::triggered, this, bind(&DIPSoftware::sharpenImage, this, 3));
 
 	//diagramWidget->setFixedSize(400, 300);
 	histogramWidget->setFixedSize(400, 300);
@@ -284,8 +301,6 @@ void DIPSoftware::histSpecGMLImage() {
 }
 
 void DIPSoftware::medianFilterImage() {
-	setOriginMat();
-
 	bool ok;
 	int maxKernel = min(imgWidget->imgMat->rows, imgWidget->imgMat->cols);
 	maxKernel = (maxKernel / 2) * 2 - 1;
@@ -294,6 +309,22 @@ void DIPSoftware::medianFilterImage() {
 		Mat image = Utils::medianFilterImageMat(*imgWidget->imgMat, size);
 		undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *imgWidget->imgMat, image));
 	}
+}
+
+void DIPSoftware::gaussianFilterImage() {
+	bool ok;
+	int maxKernel = min(imgWidget->imgMat->rows, imgWidget->imgMat->cols);
+	maxKernel = (maxKernel / 2) * 2 - 1;
+	int size(QInputDialog::getInt(this, QSL("高斯滤波"), QSL("卷积核大小"), 3, 3, maxKernel, 2, &ok));
+	if (ok) {
+		Mat image = Utils::gaussianFilterImageMat(*imgWidget->imgMat, size, 1.0);
+		undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *imgWidget->imgMat, image));
+	}
+}
+
+void DIPSoftware::sharpenImage(int type) {
+	Mat image = Utils::sharpenImageMat(*imgWidget->imgMat, type);
+	undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *imgWidget->imgMat, image));
 }
 
 void DIPSoftware::setActionsEnabled(bool enabled) {
