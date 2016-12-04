@@ -209,18 +209,7 @@ Mat Utils::rotateImageMat(const Mat& mat, float theta) {
 
 Mat Utils::changeImageMat(const Mat& mat, vector<float> deltas, changeFuncType changeFunc) {
 	Mat res(mat.rows, mat.cols, CV_8UC3);
-
-	int x[5] = { 0, mat.rows / 4, mat.rows / 2, mat.rows * 3 / 4, mat.rows };
-	int y[3] = { 0, mat.cols / 2, mat.cols };
-	future<void> getPartialResult[8];
-	rep(i, 4) rep(j, 2) {
-		getPartialResult[i + i + j] = async(changeFunc, mat, res, deltas, x[i], x[i + 1], y[j], y[j + 1]);
-	}
-
-	rep(i, 8) {
-		getPartialResult[i].get();
-	}
-
+	changeFunc(mat, res, deltas);
 	return res;
 }
 
@@ -591,110 +580,312 @@ Mat Utils::sharpenImageMat(const Mat& mat, int type) {
 	return res;
 }
 
-void Utils::changePartialImageMatLightness(const Mat& mat, Mat& res, vector<float> deltas, int x0, int x1, int y0, int y1) {
+void Utils::changePartialImageMatLightness(const Mat& mat, Mat& res, vector<float> deltas) {
 	float delta = deltas[0];
-	repa(i, x0, x1) repa(j, y0, y1) {
-		Vec3b rgb = mat.at<Vec3b>(i, j);
-		float maxValue, minValue;
-		maxValue = max(rgb[0], max(rgb[1], rgb[2]));
-		minValue = min(rgb[0], min(rgb[1], rgb[2]));
-		float L = (maxValue + minValue) * 1.0 / 510;
-		if (delta < 1) {
-			float alpha = L * (1 - delta) / (L * (1 - delta) + delta);
-			res.at<Vec3b>(i, j) = { touc((1 - alpha) * rgb[0] + alpha * 255), touc((1 - alpha) * rgb[1] + alpha * 255), touc((1 - alpha) * rgb[2] + alpha * 255) };
-		} else {
-			res.at<Vec3b>(i, j) = { touc(rgb[0] / (L * (1 - delta) + delta)), touc(rgb[1] / (L * (1 - delta) + delta)), touc(rgb[2] / (L * (1 - delta) + delta)) };
+	#pragma omp parallel for
+	for (int i = 0; i < mat.rows; ++i) {
+		for (int j = 0; j < mat.cols; ++j) {
+			Vec3b rgb = mat.at<Vec3b>(i, j);
+			float maxValue, minValue;
+			maxValue = max(rgb[0], max(rgb[1], rgb[2]));
+			minValue = min(rgb[0], min(rgb[1], rgb[2]));
+			float L = (maxValue + minValue) * 1.0 / 510;
+			if (delta < 1) {
+				float alpha = L * (1 - delta) / (L * (1 - delta) + delta);
+				res.at<Vec3b>(i, j) = { touc((1 - alpha) * rgb[0] + alpha * 255), touc((1 - alpha) * rgb[1] + alpha * 255), touc((1 - alpha) * rgb[2] + alpha * 255) };
+			} else {
+				res.at<Vec3b>(i, j) = { touc(rgb[0] / (L * (1 - delta) + delta)), touc(rgb[1] / (L * (1 - delta) + delta)), touc(rgb[2] / (L * (1 - delta) + delta)) };
+			}
 		}
 	}
 }
 
-void Utils::changePartialImageMatSaturation(const Mat& mat, Mat& res, vector<float> deltas, int x0, int x1, int y0, int y1) {
+void Utils::changePartialImageMatSaturation(const Mat& mat, Mat& res, vector<float> deltas) {
 	float delta = deltas[0];
-	repa(i, x0, x1) repa(j, y0, y1) {
-		Vec3b rgb = mat.at<Vec3b>(i, j);
-		float maxValue, minValue;
-		maxValue = max(rgb[0], max(rgb[1], rgb[2]));
-		minValue = min(rgb[0], min(rgb[1], rgb[2]));
-		float L, S;
-		L = (maxValue + minValue) * 1.0 / 510;
-		if (maxValue + minValue < 255) {
-			S = (maxValue - minValue) * 1.0 / (maxValue + minValue);
-		} else {
-			S = (maxValue - minValue) * 1.0 / (510 - maxValue - minValue);
-		}
+	#pragma omp parallel for
+	for (int i = 0; i < mat.rows; ++i) {
+		for (int j = 0; j < mat.cols; ++j) {
+			Vec3b rgb = mat.at<Vec3b>(i, j);
+			float maxValue, minValue;
+			maxValue = max(rgb[0], max(rgb[1], rgb[2]));
+			minValue = min(rgb[0], min(rgb[1], rgb[2]));
+			float L, S;
+			L = (maxValue + minValue) * 1.0 / 510;
+			if (maxValue + minValue < 255) {
+				S = (maxValue - minValue) * 1.0 / (maxValue + minValue);
+			} else {
+				S = (maxValue - minValue) * 1.0 / (510 - maxValue - minValue);
+			}
 
-		float alpha;
-		if (delta > 0) {
-			alpha = 1.0f / max(S, 1 - delta) - 1;
-			res.at<Vec3b>(i, j) = { touc(rgb[0] + (rgb[0] - L * 255) * alpha), touc(rgb[1] + (rgb[1] - L * 255) * alpha), touc(rgb[2] + (rgb[2] - L * 255) * alpha) };
-		} else {
-			alpha = delta;
-			res.at<Vec3b>(i, j) = { touc(L * 255 + (rgb[0] - L * 255) * (1 + alpha)), touc(L * 255 + (rgb[1] - L * 255) * (1 + alpha)), touc(L * 255+ (rgb[2] - L * 255) * (1 + alpha)) };
+			float alpha;
+			if (delta > 0) {
+				alpha = 1.0f / max(S, 1 - delta) - 1;
+				res.at<Vec3b>(i, j) = { touc(rgb[0] + (rgb[0] - L * 255) * alpha), touc(rgb[1] + (rgb[1] - L * 255) * alpha), touc(rgb[2] + (rgb[2] - L * 255) * alpha) };
+			} else {
+				alpha = delta;
+				res.at<Vec3b>(i, j) = { touc(L * 255 + (rgb[0] - L * 255) * (1 + alpha)), touc(L * 255 + (rgb[1] - L * 255) * (1 + alpha)), touc(L * 255 + (rgb[2] - L * 255) * (1 + alpha)) };
+			}
 		}
 	}
 }
 
-void Utils::changePartialImageMatHue(const Mat& mat, Mat& res, vector<float> deltas, int x0, int x1, int y0, int y1) {
+void Utils::changePartialImageMatHue(const Mat& mat, Mat& res, vector<float> deltas) {
 	float delta = deltas[0];
-	repa(i, x0, x1) repa(j, y0, y1) {
-		Vec3b rgb = mat.at<Vec3b>(i, j);
-		Vec3f hsl = RGB2HSL(rgb);
-		hsl[0] += delta;
-		if (hsl[0] < 0) {
-			hsl[0] += 360.0;
-		} else if (hsl[0] > 360.0) {
-			hsl[0] -= 360.0;
+	#pragma omp parallel for
+	for (int i = 0; i < mat.rows; ++i) {
+		for (int j = 0; j < mat.cols; ++j) {
+			Vec3b rgb = mat.at<Vec3b>(i, j);
+			Vec3f hsl = RGB2HSL(rgb);
+			hsl[0] += delta;
+			if (hsl[0] < 0) {
+				hsl[0] += 360.0;
+			} else if (hsl[0] > 360.0) {
+				hsl[0] -= 360.0;
+			}
+			res.at<Vec3b>(i, j) = HSL2RGB(hsl);
 		}
-		res.at<Vec3b>(i, j) = HSL2RGB(hsl);
 	}
 }
 
-void Utils::changePartialImageMatGamma(const Mat& mat, Mat& res, vector<float> deltas, int x0, int x1, int y0, int y1) {
+void Utils::changePartialImageMatGamma(const Mat& mat, Mat& res, vector<float> deltas) {
 	float gamma = deltas[0];
 	float c = deltas[1];
-	repa(i, x0, x1) repa(j, y0, y1) {
-		Vec3b rgb = mat.at<Vec3b>(i, j);
-		int tmpB, tmpG, tmpR;
-		tmpB = round(pow(rgb[0] * 1.0 / 255, gamma) * c * 255);
-		tmpG = round(pow(rgb[1] * 1.0 / 255, gamma) * c * 255);
-		tmpR = round(pow(rgb[2] * 1.0 / 255, gamma) * c * 255);
-		updateMinMax(tmpB, 255, 0);
-		updateMinMax(tmpG, 255, 0);
-		updateMinMax(tmpR, 255, 0);
-		res.at<Vec3b>(i, j) = { (uchar) tmpB, (uchar) tmpG, (uchar) tmpR };
+	#pragma omp parallel for
+	for (int i = 0; i < mat.rows; ++i) {
+		for (int j = 0; j < mat.cols; ++j) {
+			Vec3b rgb = mat.at<Vec3b>(i, j);
+			int tmpB, tmpG, tmpR;
+			tmpB = round(pow(rgb[0] * 1.0 / 255, gamma) * c * 255);
+			tmpG = round(pow(rgb[1] * 1.0 / 255, gamma) * c * 255);
+			tmpR = round(pow(rgb[2] * 1.0 / 255, gamma) * c * 255);
+			updateMinMax(tmpB, 255, 0);
+			updateMinMax(tmpG, 255, 0);
+			updateMinMax(tmpR, 255, 0);
+			res.at<Vec3b>(i, j) = { (uchar) tmpB, (uchar) tmpG, (uchar) tmpR };
+		}
 	}
 }
 
-void Utils::changePartialImageMatLog(const Mat& mat, Mat& res, vector<float> deltas, int x0, int x1, int y0, int y1) {
+void Utils::changePartialImageMatLog(const Mat& mat, Mat& res, vector<float> deltas) {
 	float a = deltas[0];
 	float b = deltas[1];
 	float c = deltas[2];
-	repa(i, x0, x1) repa(j, y0, y1) {
-		Vec3b rgb = mat.at<Vec3b>(i, j);
-		int tmpB, tmpG, tmpR;
-		tmpB = round((a + log(rgb[0] * 1.0 / 255 + 1) / (b * log(c))) * 255);
-		tmpG = round((a + log(rgb[1] * 1.0 / 255 + 1) / (b * log(c))) * 255);
-		tmpR = round((a + log(rgb[2] * 1.0 / 255 + 1) / (b * log(c))) * 255);
-		updateMinMax(tmpB, 255, 0);
-		updateMinMax(tmpG, 255, 0);
-		updateMinMax(tmpR, 255, 0);
-		res.at<Vec3b>(i, j) = { (uchar) tmpB, (uchar) tmpG, (uchar) tmpR };
+	#pragma omp parallel for
+	for (int i = 0; i < mat.rows; ++i) {
+		for (int j = 0; j < mat.cols; ++j) {
+			Vec3b rgb = mat.at<Vec3b>(i, j);
+			int tmpB, tmpG, tmpR;
+			tmpB = round((a + log(rgb[0] * 1.0 / 255 + 1) / (b * log(c))) * 255);
+			tmpG = round((a + log(rgb[1] * 1.0 / 255 + 1) / (b * log(c))) * 255);
+			tmpR = round((a + log(rgb[2] * 1.0 / 255 + 1) / (b * log(c))) * 255);
+			updateMinMax(tmpB, 255, 0);
+			updateMinMax(tmpG, 255, 0);
+			updateMinMax(tmpR, 255, 0);
+			res.at<Vec3b>(i, j) = { (uchar) tmpB, (uchar) tmpG, (uchar) tmpR };
+		}
 	}
 }
 
-void Utils::changePartialImageMatPow(const Mat& mat, Mat& res, vector<float> deltas, int x0, int x1, int y0, int y1) {
+void Utils::changePartialImageMatPow(const Mat& mat, Mat& res, vector<float> deltas) {
 	float a = deltas[0];
 	float b = deltas[1];
 	float c = deltas[2];
-	repa(i, x0, x1) repa(j, y0, y1) {
-		Vec3b rgb = mat.at<Vec3b>(i, j);
-		int tmpB, tmpG, tmpR;
-		tmpB = round((pow(b, c * (rgb[0] * 1.0 / 255 - a)) - 1) * 255);
-		tmpG = round((pow(b, c * (rgb[1] * 1.0 / 255 - a)) - 1) * 255);
-		tmpR = round((pow(b, c * (rgb[2] * 1.0 / 255 - a)) - 1) * 255);
-		updateMinMax(tmpB, 255, 0);
-		updateMinMax(tmpG, 255, 0);
-		updateMinMax(tmpR, 255, 0);
-		res.at<Vec3b>(i, j) = { (uchar) tmpB, (uchar) tmpG, (uchar) tmpR };
+	#pragma omp parallel for
+	for (int i = 0; i < mat.rows; ++i) {
+		for (int j = 0; j < mat.cols; ++j) {
+			Vec3b rgb = mat.at<Vec3b>(i, j);
+			int tmpB, tmpG, tmpR;
+			tmpB = round((pow(b, c * (rgb[0] * 1.0 / 255 - a)) - 1) * 255);
+			tmpG = round((pow(b, c * (rgb[1] * 1.0 / 255 - a)) - 1) * 255);
+			tmpR = round((pow(b, c * (rgb[2] * 1.0 / 255 - a)) - 1) * 255);
+			updateMinMax(tmpB, 255, 0);
+			updateMinMax(tmpG, 255, 0);
+			updateMinMax(tmpR, 255, 0);
+			res.at<Vec3b>(i, j) = { (uchar) tmpB, (uchar) tmpG, (uchar) tmpR };
+		}
 	}
+}
+
+void Utils::shiftDFT(Mat &fImg) {
+	Mat tmp, q0, q1, q2, q3;
+	fImg = fImg(Rect(0, 0, fImg.cols & -2, fImg.rows & -2));
+
+	int cx = fImg.cols / 2, cy = fImg.rows / 2;
+
+	q0 = fImg(Rect(0, 0, cx, cy));
+	q1 = fImg(Rect(cx, 0, cx, cy));
+	q2 = fImg(Rect(0, cy, cx, cy));
+	q3 = fImg(Rect(cx, cy, cx, cy));
+
+	q0.copyTo(tmp);
+	q3.copyTo(q0);
+	tmp.copyTo(q3);
+
+	q1.copyTo(tmp);
+	q2.copyTo(q1);
+	tmp.copyTo(q2);
+}
+
+Mat Utils::freqFiltering(const Mat &mat, const Mat &filter) {
+	//int M = getOptimalDFTSize(mat.rows);
+	//int N = getOptimalDFTSize(mat.cols);
+
+	vector<cv::Mat> img_channels;
+	split(mat, img_channels);
+	rep(i, 3) {
+		Mat &img = img_channels[i];
+
+		//Mat padded;
+		//copyMakeBorder(img, padded, 0, M - img.rows, 0, N - img.cols, BORDER_CONSTANT, Scalar::all(0));
+		Mat padded = img.clone();
+		Mat planes[2] = { Mat_<float>(padded), Mat::zeros(padded.size(), CV_32F) };
+		Mat complexImg;
+		merge(planes, 2, complexImg);
+		dft(complexImg, complexImg);
+
+		shiftDFT(complexImg);
+		mulSpectrums(complexImg, filter, complexImg, 0);
+		shiftDFT(complexImg);
+
+		idft(complexImg, complexImg);
+		split(complexImg, planes);
+
+		normalize(planes[0], img, 0, 1, CV_MINMAX);
+		img.convertTo(img, CV_8UC3, 255.0);
+	}
+
+	Mat res;
+	merge(img_channels, res);
+	res = histogramSpecificationSML(res, mat);
+
+	return res;
+}
+
+Mat Utils::lowPassFiltering(const Mat &mat, const Mat &filter) { return freqFiltering(mat, filter); }
+
+Mat Utils::highPassFiltering(const Mat &mat, const Mat &filter) {
+	return freqFiltering(mat, filter + 2.5);
+}
+
+Mat Utils::idealLowPassFilter(int rows, int cols, float D0) {
+	Mat tmp(rows, cols, CV_32F);
+	rep(i, tmp.rows) rep(j, tmp.cols) {
+		float D2 = sqr(i - tmp.rows / 2) + sqr(j - tmp.cols / 2);
+		if (D2 < sqr(D0)) tmp.at<float>(i, j) = 1.0f;
+		else tmp.at<float>(i, j) = 0.0f;
+	}
+
+	Mat toMerge[2] = { tmp, tmp };
+	Mat filter;
+	merge(toMerge, 2, filter);
+	return filter;
+}
+
+Mat Utils::idealHighPassFilter(int rows, int cols, float D0) {
+	Mat tmp(rows, cols, CV_32F);
+	rep(i, tmp.rows) rep(j, tmp.cols) {
+		float D2 = sqr(i - tmp.rows / 2) + sqr(j - tmp.cols / 2);
+		if (D2 < sqr(D0)) tmp.at<float>(i, j) = 0.0f;
+		else tmp.at<float>(i, j) = 1.0f;
+	}
+
+	Mat toMerge[2] = { tmp, tmp };
+	Mat filter;
+	merge(toMerge, 2, filter);
+	return filter;
+}
+
+Mat Utils::butterWorthLowPassFilter(int rows, int cols, float D0, int n) {
+	Mat tmp(rows, cols, CV_32F);
+	rep(i, tmp.rows) rep(j, tmp.cols) {
+		float D2 = sqr(i - tmp.rows / 2) + sqr(j - tmp.cols / 2);
+		tmp.at<float>(i, j) = 1.0 / (1 + pow(D2 / sqr(D0), n));
+	}
+
+	Mat toMerge[2] = { tmp, tmp };
+	Mat filter;
+	merge(toMerge, 2, filter);
+	return filter;
+}
+
+Mat Utils::butterWorthHighPassFilter(int rows, int cols, float D0, int n) {
+	Mat tmp(rows, cols, CV_32F);
+	rep(i, tmp.rows) rep(j, tmp.cols) {
+		float D2 = sqr(i - tmp.rows / 2) + sqr(j - tmp.cols / 2);
+		tmp.at<float>(i, j) = 1.0 / (1 + pow(sqr(D0) / D2, n));
+	}
+
+	Mat toMerge[2] = { tmp, tmp };
+	Mat filter;
+	merge(toMerge, 2, filter);
+	return filter;
+}
+
+Mat Utils::gaussLowPassFilter(int rows, int cols, float D0) {
+	Mat tmp(rows, cols, CV_32F);
+	rep(i, tmp.rows) rep(j, tmp.cols) {
+		float D2 = sqr(i - tmp.rows / 2) + sqr(j - tmp.cols / 2);
+		tmp.at<float>(i, j) = exp(-D2 / (2 * sqr(D0)));
+	}
+
+	Mat toMerge[2] = { tmp, tmp };
+	Mat filter;
+	merge(toMerge, 2, filter);
+	return filter;
+}
+
+Mat Utils::gaussHighPassFilter(int rows, int cols, float D0) {
+	Mat tmp(rows, cols, CV_32F);
+	rep(i, tmp.rows) rep(j, tmp.cols) {
+		float D2 = sqr(i - tmp.rows / 2) + sqr(j - tmp.cols / 2);
+		tmp.at<float>(i, j) = 1 - exp(-D2 / (2 * sqr(D0)));
+	}
+
+	Mat toMerge[2] = { tmp, tmp };
+	Mat filter;
+	merge(toMerge, 2, filter);
+	return filter;
+}
+
+Mat Utils::trapezoidLowPassFilter(int rows, int cols, float D0, float D_) {
+	if (D_ > D0) swap(D0, D_);
+
+	Mat tmp(rows, cols, CV_32F);
+	rep(i, tmp.rows) rep(j, tmp.cols) {
+		float D2 = sqr(i - tmp.rows / 2) + sqr(j - tmp.cols / 2);
+		if (D2 <= sqr(D_)) tmp.at<float>(i, j) = 1.0f;
+		else if (D2 <= sqr(D0)) tmp.at<float>(i, j) = (sqrt(D2) - D0) / (D_ - D0);
+		else tmp.at<float>(i, j) = 0.0f;
+	}
+
+	Mat toMerge[2] = { tmp, tmp };
+	Mat filter;
+	merge(toMerge, 2, filter);
+	return filter;
+}
+
+Mat Utils::expLowPassFilter(int rows, int cols, float D0, int n) {
+	Mat tmp(rows, cols, CV_32F);
+	rep(i, tmp.rows) rep(j, tmp.cols) {
+		float D2 = sqr(i - tmp.rows / 2) + sqr(j - tmp.cols / 2);
+		tmp.at<float>(i, j) = exp(-pow(sqrt(D2) / D0, n));
+	}
+
+	Mat toMerge[2] = { tmp, tmp };
+	Mat filter;
+	merge(toMerge, 2, filter);
+	return filter;
+}
+
+Mat Utils::laplaceHighPassFilter(int rows, int cols) {
+	Mat tmp(rows, cols, CV_32F);
+	rep(i, tmp.rows) rep(j, tmp.cols) {
+		float D2 = sqr(i - tmp.rows / 2) + sqr(j - tmp.cols / 2);
+		tmp.at<float>(i, j) = D2 * 25 / (rows * cols);
+	}
+
+	Mat toMerge[2] = { tmp, tmp };
+	Mat filter;
+	merge(toMerge, 2, filter);
+	return filter;
 }

@@ -17,18 +17,20 @@
 
 #include "ImgWidget.h"
 
-struct ParameterInfo {
-	std::function<float(float)> deltaFunc;
-	std::function<float(float)> invDeltaFunc;
-	QString label;
-	float value, minValue, maxValue;
-
-	ParameterInfo() {}
-	ParameterInfo(std::function<float(float)> _deltaFunc, std::function<float(float)> _invDeltaFunc, const QString& _label, float _value, float _minValue, float _maxValue) : deltaFunc(_deltaFunc), invDeltaFunc(_invDeltaFunc), label(_label), value(_value), minValue(_minValue), maxValue(_maxValue) {}
-};
-
 class InputPreviewDialog : public QDialog {
 	Q_OBJECT
+
+public:
+	struct ParameterInfo {
+		std::function<float(float)> deltaFunc;
+		std::function<float(float)> invDeltaFunc;
+		QString label;
+		float value, minValue, maxValue;
+
+		ParameterInfo() {}
+		ParameterInfo(std::function<float(float)> _deltaFunc, std::function<float(float)> _invDeltaFunc, const QString& _label, float _value, float _minValue, float _maxValue) : 
+			deltaFunc(_deltaFunc), invDeltaFunc(_invDeltaFunc), label(_label), value(_value), minValue(_minValue), maxValue(_maxValue) {}
+	};
 
 private:
 	QLabel *title;

@@ -1,6 +1,7 @@
 #include "EditImageCommand.h"
 #include "DiagramPreviewDialog.h"
 #include "dipsoftware.h"
+#include "MultiInputDialog.h"
 
 #include <QFileDialog>
 #include <QInputDialog>
@@ -65,6 +66,15 @@ DIPSoftware::DIPSoftware(QWidget *parent) : QMainWindow(parent) {
 	sharpenPrewittFilterAction = new QAction(QSL("&Prewitt算子"), this);
 	sharpenSobelFilterAction = new QAction(QSL("&Sobel算子"), this);
 	sharpenLaplaceFilterAction = new QAction(QSL("&Laplace算子"), this);
+	idealLowPassAction = new QAction(QSL("&理想低通滤波"), this);
+	butterWorthLowPassAction = new QAction(QSL("&ButterWorth低通滤波"), this);
+	gaussLowPassAction = new QAction(QSL("&高斯低通滤波"), this);
+	trapezoidLowPassAction = new QAction(QSL("&梯形低通滤波"), this);
+	expLowPassAction = new QAction(QSL("&指数低通滤波"), this);
+	idealHighPassAction = new QAction(QSL("&理想高通滤波"), this);
+	butterWorthHighPassAction = new QAction(QSL("&ButterWorth高通滤波"), this);
+	gaussHighPassAction = new QAction(QSL("&高斯高通滤波"), this);
+	laplaceHighPassAction = new QAction(QSL("&拉普拉斯高通滤波"), this);
 
 	actionObservers = make_shared<vector<QAction*>>(initializer_list<QAction*>{
 		saveFileAction, saveAsFileAction, rotate90Action,
@@ -74,7 +84,10 @@ DIPSoftware::DIPSoftware(QWidget *parent) : QMainWindow(parent) {
 		changeGammaAction, changeLogAction, changePowAction,
 		histEquAction, histSpecSMLAction, histSpecGMLAction,
 		medianFilterAction, gaussianFilterAction, sharpenRobertFilterAction,
-		sharpenPrewittFilterAction, sharpenSobelFilterAction, sharpenLaplaceFilterAction
+		sharpenPrewittFilterAction, sharpenSobelFilterAction, sharpenLaplaceFilterAction,
+		idealLowPassAction, butterWorthLowPassAction, gaussLowPassAction,
+		trapezoidLowPassAction, expLowPassAction, idealHighPassAction,
+		butterWorthHighPassAction, gaussHighPassAction, laplaceHighPassAction
 	});
 
 	QMenu *fileMenu = menuBar()->addMenu(QSL("&文件"));
@@ -118,6 +131,18 @@ DIPSoftware::DIPSoftware(QWidget *parent) : QMainWindow(parent) {
 	sharpenMenu->addAction(sharpenPrewittFilterAction);
 	sharpenMenu->addAction(sharpenSobelFilterAction);
 	sharpenMenu->addAction(sharpenLaplaceFilterAction);
+	QMenu *freqFilterMenu = imageMenu->addMenu(QSL("&频域滤波器"));
+	QMenu *lowPassFilterMenu = freqFilterMenu->addMenu(QSL("&低通滤波器"));
+	lowPassFilterMenu->addAction(idealLowPassAction);
+	lowPassFilterMenu->addAction(butterWorthLowPassAction);
+	lowPassFilterMenu->addAction(gaussLowPassAction);
+	lowPassFilterMenu->addAction(trapezoidLowPassAction);
+	lowPassFilterMenu->addAction(expLowPassAction);
+	QMenu *highPassFilterMenu = freqFilterMenu->addMenu(QSL("&高通滤波器"));
+	highPassFilterMenu->addAction(idealHighPassAction);
+	highPassFilterMenu->addAction(butterWorthHighPassAction);
+	highPassFilterMenu->addAction(gaussHighPassAction);
+	highPassFilterMenu->addAction(laplaceHighPassAction);
 
 	connect(imgWidget, &ImgWidget::setCropActionEnabled, this, bind(&QAction::setEnabled, cropAction, placeholders::_1));
 	connect(openFileAction, &QAction::triggered, this, &DIPSoftware::openFile);
@@ -130,28 +155,28 @@ DIPSoftware::DIPSoftware(QWidget *parent) : QMainWindow(parent) {
 	connect(rotateAction, &QAction::triggered, this, &DIPSoftware::rotateImageAnyAngle);
 	connect(horizontalFlipAction, &QAction::triggered, this, &DIPSoftware::horizontalFlipImage);
 	connect(verticalFlipAction, &QAction::triggered, this, &DIPSoftware::verticalFlipImage);
-	connect(changeLightnessAction, &QAction::triggered, this, bind(&DIPSoftware::uiChangeImage, this, &Utils::changePartialImageMatLightness, QSL("亮度"), vector<ParameterInfo>{
-		ParameterInfo([](float d){ return exp(-d / 100); }, [](float d){ return -100 * log(d); }, QSL("亮度："), 0, -150, 150)
+	connect(changeLightnessAction, &QAction::triggered, this, bind(&DIPSoftware::uiChangeImage, this, &Utils::changePartialImageMatLightness, QSL("亮度"), vector<InputPreviewDialog::ParameterInfo>{
+		InputPreviewDialog::ParameterInfo([](float d){ return exp(-d / 100); }, [](float d){ return -100 * log(d); }, QSL("亮度："), 0, -150, 150)
 	}));
-	connect(changeSaturationAction, &QAction::triggered, this, bind(&DIPSoftware::uiChangeImage, this, &Utils::changePartialImageMatSaturation, QSL("饱和度"), vector<ParameterInfo>{
-		ParameterInfo([](float d){ return d / 100; }, [](float d){ return 100 * d; }, QSL("饱和度："), 0, -100, 100)
+	connect(changeSaturationAction, &QAction::triggered, this, bind(&DIPSoftware::uiChangeImage, this, &Utils::changePartialImageMatSaturation, QSL("饱和度"), vector<InputPreviewDialog::ParameterInfo>{
+		InputPreviewDialog::ParameterInfo([](float d){ return d / 100; }, [](float d){ return 100 * d; }, QSL("饱和度："), 0, -100, 100)
 	}));
-	connect(changeHueAction, &QAction::triggered, this, bind(&DIPSoftware::uiChangeImage, this, &Utils::changePartialImageMatHue, QSL("色调"), vector<ParameterInfo>{
-		ParameterInfo([](float d){ return d; }, [](float d){ return d; }, QSL("色调："), 0, -180, 180)
+	connect(changeHueAction, &QAction::triggered, this, bind(&DIPSoftware::uiChangeImage, this, &Utils::changePartialImageMatHue, QSL("色调"), vector<InputPreviewDialog::ParameterInfo>{
+		InputPreviewDialog::ParameterInfo([](float d){ return d; }, [](float d){ return d; }, QSL("色调："), 0, -180, 180)
 	}));
-	connect(changeGammaAction, &QAction::triggered, this, bind(&DIPSoftware::uiChangeImage, this, &Utils::changePartialImageMatGamma, QSL("Gamma校正"), vector<ParameterInfo>{
-		ParameterInfo([](float d){ return pow(10, d / 1000); }, [](float d){ return 1000 * log10(d); }, QSL("γ："), 0, -1400, 1400),
-		ParameterInfo([](float d){ return pow(10, d / 100); }, [](float d){ return 100 * log10(d); }, QSL("c："), 0, -100, 100)
+	connect(changeGammaAction, &QAction::triggered, this, bind(&DIPSoftware::uiChangeImage, this, &Utils::changePartialImageMatGamma, QSL("Gamma校正"), vector<InputPreviewDialog::ParameterInfo>{
+		InputPreviewDialog::ParameterInfo([](float d){ return pow(10, d / 1000); }, [](float d){ return 1000 * log10(d); }, QSL("γ："), 0, -1400, 1400),
+			InputPreviewDialog::ParameterInfo([](float d){ return pow(10, d / 100); }, [](float d){ return 100 * log10(d); }, QSL("c："), 0, -100, 100)
 	}));
-	connect(changeLogAction, &QAction::triggered, this, bind(&DIPSoftware::uiChangeImage, this, &Utils::changePartialImageMatLog, QSL("对数变换"), vector<ParameterInfo>{
-		ParameterInfo([](float d){ return d / 100; }, [](float d){ return d * 100; }, QSL("a："), 0, -100, 100),
-		ParameterInfo([](float d){ return pow(10, d / 100); }, [](float d){ return 100 * log10(d); }, QSL("b："), 0, -100, 100),
-		ParameterInfo([](float d){ return d / 100; }, [](float d){ return 100 * d; }, QSL("c："), 200, 105, 1000)
+	connect(changeLogAction, &QAction::triggered, this, bind(&DIPSoftware::uiChangeImage, this, &Utils::changePartialImageMatLog, QSL("对数变换"), vector<InputPreviewDialog::ParameterInfo>{
+		InputPreviewDialog::ParameterInfo([](float d){ return d / 100; }, [](float d){ return d * 100; }, QSL("a："), 0, -100, 100),
+		InputPreviewDialog::ParameterInfo([](float d){ return pow(10, d / 100); }, [](float d){ return 100 * log10(d); }, QSL("b："), 0, -100, 100),
+		InputPreviewDialog::ParameterInfo([](float d){ return d / 100; }, [](float d){ return 100 * d; }, QSL("c："), 200, 105, 1000)
 	}));
-	connect(changePowAction, &QAction::triggered, this, bind(&DIPSoftware::uiChangeImage, this, &Utils::changePartialImageMatPow, QSL("指数变换"), vector<ParameterInfo>{
-		ParameterInfo([](float d){ return d / 100; }, [](float d){ return d * 100; }, QSL("a："), 0, -100, 100),
-		ParameterInfo([](float d){ return d / 100; }, [](float d){ return 100 * d; }, QSL("b："), 230, 101, 1000),
-		ParameterInfo([](float d){ return pow(10, d / 100); }, [](float d){ return 100 * log10(d); }, QSL("c："), 0, -100, 100)
+	connect(changePowAction, &QAction::triggered, this, bind(&DIPSoftware::uiChangeImage, this, &Utils::changePartialImageMatPow, QSL("指数变换"), vector<InputPreviewDialog::ParameterInfo>{
+		InputPreviewDialog::ParameterInfo([](float d){ return d / 100; }, [](float d){ return d * 100; }, QSL("a："), 0, -100, 100),
+		InputPreviewDialog::ParameterInfo([](float d){ return d / 100; }, [](float d){ return 100 * d; }, QSL("b："), 230, 101, 1000),
+		InputPreviewDialog::ParameterInfo([](float d){ return pow(10, d / 100); }, [](float d){ return 100 * log10(d); }, QSL("c："), 0, -100, 100)
 	}));
 	connect(linearConvertAction, &QAction::triggered, this, &DIPSoftware::linearConvertImage);
 	connect(histEquAction, &QAction::triggered, this, &DIPSoftware::histEquImage);
@@ -163,6 +188,15 @@ DIPSoftware::DIPSoftware(QWidget *parent) : QMainWindow(parent) {
 	connect(sharpenPrewittFilterAction, &QAction::triggered, this, bind(&DIPSoftware::sharpenImage, this, 1));
 	connect(sharpenSobelFilterAction, &QAction::triggered, this, bind(&DIPSoftware::sharpenImage, this, 2));
 	connect(sharpenLaplaceFilterAction, &QAction::triggered, this, bind(&DIPSoftware::sharpenImage, this, 3));
+	connect(idealLowPassAction, &QAction::triggered, this, bind(&DIPSoftware::lowPassFilteringImage, this, 0));
+	connect(butterWorthLowPassAction, &QAction::triggered, this, bind(&DIPSoftware::lowPassFilteringImage, this, 1));
+	connect(gaussLowPassAction, &QAction::triggered, this, bind(&DIPSoftware::lowPassFilteringImage, this, 2));
+	connect(trapezoidLowPassAction, &QAction::triggered, this, bind(&DIPSoftware::lowPassFilteringImage, this, 3));
+	connect(expLowPassAction , &QAction::triggered, this, bind(&DIPSoftware::lowPassFilteringImage, this, 4));
+	connect(idealHighPassAction, &QAction::triggered, this, bind(&DIPSoftware::highPassFilteringImage, this, 0));
+	connect(butterWorthHighPassAction, &QAction::triggered, this, bind(&DIPSoftware::highPassFilteringImage, this, 1));
+	connect(gaussHighPassAction, &QAction::triggered, this, bind(&DIPSoftware::highPassFilteringImage, this, 2));
+	connect(laplaceHighPassAction, &QAction::triggered, this, bind(&DIPSoftware::highPassFilteringImage, this, 3));
 
 	//diagramWidget->setFixedSize(400, 300);
 	histogramWidget->setFixedSize(400, 300);
@@ -256,7 +290,7 @@ void DIPSoftware::changeImage(function<Mat(vector<float>)> lambdaFunc, function<
 	}
 }
 
-void DIPSoftware::uiChangeImage(Utils::changeFuncType changeFunc, const QString &title, const vector<ParameterInfo>& infos) {
+void DIPSoftware::uiChangeImage(Utils::changeFuncType changeFunc, const QString &title, const vector<InputPreviewDialog::ParameterInfo>& infos) {
 	auto lambdaFunc = [=](vector<float> d){ return Utils::changeImageMat(*originMat, d, changeFunc); };
 	changeImage(lambdaFunc, [=](function<Mat(vector<float>)> lambdaFunc, bool& ok){ return InputPreviewDialog::changeFloat(this, imgWidget, lambdaFunc, title, infos, &ok); });
 }
@@ -315,7 +349,7 @@ void DIPSoftware::gaussianFilterImage() {
 	bool ok;
 	int maxKernel = min(imgWidget->imgMat->rows, imgWidget->imgMat->cols);
 	maxKernel = (maxKernel / 2) * 2 - 1;
-	int size(QInputDialog::getInt(this, QSL("高斯滤波"), QSL("卷积核大小"), 3, 3, maxKernel, 2, &ok));
+	int size = QInputDialog::getInt(this, QSL("高斯滤波"), QSL("卷积核大小"), 3, 3, maxKernel, 2, &ok);
 	if (ok) {
 		Mat image = Utils::gaussianFilterImageMat(*imgWidget->imgMat, size, 1.0);
 		undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *imgWidget->imgMat, image));
@@ -325,6 +359,66 @@ void DIPSoftware::gaussianFilterImage() {
 void DIPSoftware::sharpenImage(int type) {
 	Mat image = Utils::sharpenImageMat(*imgWidget->imgMat, type);
 	undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *imgWidget->imgMat, image));
+}
+
+void DIPSoftware::lowPassFilteringImage(int type) {
+	Mat image;
+	bool ok;
+
+	int rows = imgWidget->imgMat->rows, cols = imgWidget->imgMat->cols;
+	int a = 64;
+	if (type == 0) {
+		float D0 = QInputDialog::getDouble(this, QSL("理想低通滤波"), QSL("截断频率"), a, 0, a, 1, &ok);
+		if (ok) image = Utils::lowPassFiltering(*imgWidget->imgMat, Utils::idealLowPassFilter(rows, cols, D0));
+	} else if (type == 1) {
+		vector<float> pars = MultiInputDialog::getFloats(this, QSL("ButterWorth低通滤波"), vector<MultiInputDialog::ParameterInfo>{
+			MultiInputDialog::ParameterInfo{ QSL("截断频率"), float(a), 0, float(a) },
+			MultiInputDialog::ParameterInfo{ QSL("阶数"), 1.0, 1.0, 100.0 }
+		}, &ok);
+		if (ok) image = Utils::lowPassFiltering(*imgWidget->imgMat, Utils::butterWorthLowPassFilter(rows, cols, pars[0], int(pars[1])));
+	} else if (type == 2) {
+		float D0 = QInputDialog::getDouble(this, QSL("高斯低通滤波"), QSL("截断频率"), a, 0, a, 1, &ok);
+		if (ok) image = Utils::lowPassFiltering(*imgWidget->imgMat, Utils::gaussLowPassFilter(rows, cols, D0));
+	} else if (type == 3) {
+		vector<float> pars = MultiInputDialog::getFloats(this, QSL("梯形低通滤波"), vector<MultiInputDialog::ParameterInfo>{
+			MultiInputDialog::ParameterInfo{ QSL("临界频率"), float(a) * 0.5f, 0, float(a)},
+			MultiInputDialog::ParameterInfo{ QSL("截断频率"), float(a), 0, float(a)}
+		}, &ok);
+		if (ok) image = Utils::lowPassFiltering(*imgWidget->imgMat, Utils::trapezoidLowPassFilter(rows, cols, pars[1], pars[0]));
+	} else if (type == 4) {
+		vector<float> pars = MultiInputDialog::getFloats(this, QSL("指数低通滤波"), vector<MultiInputDialog::ParameterInfo>{
+			MultiInputDialog::ParameterInfo{ QSL("截断频率"), float(a), 0, float(a) },
+			MultiInputDialog::ParameterInfo{ QSL("阶数"), 1.0, 1.0, 100.0 }
+		}, &ok);
+		if (ok) image = Utils::lowPassFiltering(*imgWidget->imgMat, Utils::expLowPassFilter(rows, cols, pars[0], int(pars[1])));
+	}
+
+	if (ok) undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *imgWidget->imgMat, image));
+}
+
+void DIPSoftware::highPassFilteringImage(int type) {
+	Mat image;
+	bool ok;
+
+	int rows = imgWidget->imgMat->rows, cols = imgWidget->imgMat->cols;
+	int a = 32;
+	if (type == 0) {
+		float D0 = QInputDialog::getDouble(this, QSL("理想低通滤波"), QSL("截断频率"), a, 0, a, 1, &ok);
+		if (ok) image = Utils::highPassFiltering(*imgWidget->imgMat, Utils::idealHighPassFilter(rows, cols, D0));
+	} else if (type == 1) {
+		vector<float> pars = MultiInputDialog::getFloats(this, QSL("ButterWorth低通滤波"), vector<MultiInputDialog::ParameterInfo>{
+			MultiInputDialog::ParameterInfo{ QSL("截断频率"), float(a), 0, float(a) },
+			MultiInputDialog::ParameterInfo{ QSL("阶数"), 1.0, 1.0, 100.0 }
+		}, &ok);
+		if (ok) image = Utils::highPassFiltering(*imgWidget->imgMat, Utils::butterWorthHighPassFilter(rows, cols, pars[0], int(pars[1])));
+	} else if (type == 2) {
+		float D0 = QInputDialog::getDouble(this, QSL("高斯低通滤波"), QSL("截断频率"), a, 0, a, 1, &ok);
+		if (ok) image = Utils::highPassFiltering(*imgWidget->imgMat, Utils::gaussHighPassFilter(rows, cols, D0));
+	} else if (type == 3) {
+		image = Utils::highPassFiltering(*imgWidget->imgMat, Utils::laplaceHighPassFilter(rows, cols));
+	}
+
+	if (ok) undoStack->push(new EditImageCommand(imgWidget, histogramWidget, *imgWidget->imgMat, image));
 }
 
 void DIPSoftware::setActionsEnabled(bool enabled) {

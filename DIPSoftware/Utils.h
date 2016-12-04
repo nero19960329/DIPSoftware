@@ -66,7 +66,7 @@ cv::Vec<T, cn> abs(const cv::Vec<T, cn> &v) {
 
 class Utils {
 public:
-	using changeFuncType = std::function<void(const cv::Mat &, cv::Mat &, std::vector<float>, int, int, int, int)>;
+	using changeFuncType = std::function<void(const cv::Mat &, cv::Mat &, std::vector<float>)>;
 
 	static std::string int2ANSIColor(int k);
 	static void c_printf(const char *color, const char *format, ...);
@@ -96,12 +96,27 @@ public:
 	static cv::Mat gaussianFilterImageMat(const cv::Mat& mat, int size, float sigma);
 	static cv::Mat sharpenImageMat(const cv::Mat& mat, int type);
 
-	static void changePartialImageMatLightness(const cv::Mat& mat, cv::Mat& res, std::vector<float> deltas, int x0, int x1, int y0, int y1);
-	static void changePartialImageMatSaturation(const cv::Mat& mat, cv::Mat& res, std::vector<float> deltas, int x0, int x1, int y0, int y1);
-	static void changePartialImageMatHue(const cv::Mat& mat, cv::Mat& res, std::vector<float> deltas, int x0, int x1, int y0, int y1);
-	static void changePartialImageMatGamma(const cv::Mat& mat, cv::Mat& res, std::vector<float> deltas, int x0, int x1, int y0, int y1);
-	static void changePartialImageMatLog(const cv::Mat& mat, cv::Mat& res, std::vector<float> deltas, int x0, int x1, int y0, int y1);
-	static void changePartialImageMatPow(const cv::Mat& mat, cv::Mat& res, std::vector<float> deltas, int x0, int x1, int y0, int y1);
+	static void changePartialImageMatLightness(const cv::Mat& mat, cv::Mat& res, std::vector<float> deltas);
+	static void changePartialImageMatSaturation(const cv::Mat& mat, cv::Mat& res, std::vector<float> deltas);
+	static void changePartialImageMatHue(const cv::Mat& mat, cv::Mat& res, std::vector<float> deltas);
+	static void changePartialImageMatGamma(const cv::Mat& mat, cv::Mat& res, std::vector<float> deltas);
+	static void changePartialImageMatLog(const cv::Mat& mat, cv::Mat& res, std::vector<float> deltas);
+	static void changePartialImageMatPow(const cv::Mat& mat, cv::Mat& res, std::vector<float> deltas);
+
+	static cv::Mat freqFiltering(const cv::Mat &mat, const cv::Mat &filter);
+	static cv::Mat lowPassFiltering(const cv::Mat &res, const cv::Mat &filter);
+	static cv::Mat highPassFiltering(const cv::Mat &res, const cv::Mat &filter);
+
+	static cv::Mat idealLowPassFilter(int rows, int cols, float D0);
+	static cv::Mat butterWorthLowPassFilter(int rows, int cols, float D0, int n);
+	static cv::Mat gaussLowPassFilter(int rows, int cols, float D0);
+	static cv::Mat trapezoidLowPassFilter(int rows, int cols, float D0, float D_);
+	static cv::Mat expLowPassFilter(int rows, int cols, float D0, int n);
+
+	static cv::Mat idealHighPassFilter(int rows, int cols, float D0);
+	static cv::Mat butterWorthHighPassFilter(int rows, int cols, float D0, int n);
+	static cv::Mat gaussHighPassFilter(int rows, int cols, float D0);
+	static cv::Mat laplaceHighPassFilter(int rows, int cols);
 
 private:
 	static std::vector<float> getGaussianKernel1D(int size, float sigma);
@@ -110,4 +125,6 @@ private:
 	static cv::Mat getPrewittFilterImageMat(const cv::Mat& mat);
 	static cv::Mat getSobelFilterImageMat(const cv::Mat& mat);
 	static cv::Mat getLaplaceFilterImageMat(const cv::Mat& mat);
+
+	static void shiftDFT(cv::Mat &fImg);
 };

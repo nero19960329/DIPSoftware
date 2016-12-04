@@ -37,7 +37,7 @@ private:
 	void horizontalFlipImage();
 	void verticalFlipImage();
 	void changeImage(std::function<cv::Mat(std::vector<float>)> lambdaFunc, std::function<std::vector<float>(std::function<cv::Mat(std::vector<float>)>, bool&)> changeFunc);
-	void uiChangeImage(Utils::changeFuncType changeFunc, const QString &title, const std::vector<ParameterInfo> &infos);
+	void uiChangeImage(Utils::changeFuncType changeFunc, const QString &title, const std::vector<InputPreviewDialog::ParameterInfo> &infos);
 	void linearConvertImage();
 	void histEquImage();
 	void histSpecSMLImage();
@@ -45,6 +45,8 @@ private:
 	void medianFilterImage();
 	void gaussianFilterImage();
 	void sharpenImage(int type);
+	void lowPassFilteringImage(int type);
+	void highPassFilteringImage(int type);
 
 	void setActionsEnabled(bool enabled);
 
@@ -87,6 +89,17 @@ private:
 	QAction *sharpenPrewittFilterAction;
 	QAction *sharpenSobelFilterAction;
 	QAction *sharpenLaplaceFilterAction;
+
+	QAction *idealLowPassAction;
+	QAction *butterWorthLowPassAction;
+	QAction *gaussLowPassAction;
+	QAction *trapezoidLowPassAction;
+	QAction *expLowPassAction;
+
+	QAction *idealHighPassAction;
+	QAction *butterWorthHighPassAction;
+	QAction *gaussHighPassAction;
+	QAction *laplaceHighPassAction;
 
 	std::shared_ptr<std::vector<QAction*>> actionObservers;
 
